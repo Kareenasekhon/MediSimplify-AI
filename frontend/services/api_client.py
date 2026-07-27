@@ -179,3 +179,72 @@ class APIClient:
             raise RuntimeError(self._extract_error(exc.response)) from exc
         except httpx.RequestError as exc:
             raise RuntimeError(f"Could not reach the report explanation API: {exc}") from exc
+
+    def build_knowledge_base(self, report_id: str, force: bool = False) -> dict:
+        """Build or rebuild the report-scoped vector knowledge base."""
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                response = client.post(
+                    f"{self.base_url}/api/v1/chat/{report_id}/knowledge-base",
+                    params={"force": str(force).lower()},
+                )
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(self._extract_error(exc.response)) from exc
+        except httpx.RequestError as exc:
+            raise RuntimeError(f"Could not reach the knowledge-base API: {exc}") from exc
+
+    def get_knowledge_base_status(self, report_id: str) -> dict:
+        """Read report-scoped RAG status."""
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                response = client.get(f"{self.base_url}/api/v1/chat/{report_id}/status")
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(self._extract_error(exc.response)) from exc
+        except httpx.RequestError as exc:
+            raise RuntimeError(f"Could not reach the knowledge-base status API: {exc}") from exc
+
+    def ask_report_question(
+        self,
+        report_id: str,
+        question: str,
+        language: str,
+        provider: str | None = None,
+        top_k: int = 4,
+    ) -> dict:
+        """Ask a grounded follow-up question about the current report."""
+        payload = {
+            "report_id": report_id,
+            "question": question,
+            "language": language,
+            "preferred_provider": (
+                provider.lower().replace(" (local)", "") if provider else None
+            ),
+            "top_k": top_k,
+        }
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                response = client.post(f"{self.base_url}/api/v1/chat", json=payload)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(self._extract_error(exc.response)) from exc
+        except httpx.RequestError as exc:
+            raise RuntimeError(f"Could not reach the conversational RAG API: {exc}") from exc
+
+    def clear_conversation(self, report_id: str) -> dict:
+        """Clear in-memory chat history for one report."""
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                response = client.delete(
+                    f"{self.base_url}/api/v1/chat/{report_id}/conversation"
+                )
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(self._extract_error(exc.response)) from exc
+        except httpx.RequestError as exc:
+            raise RuntimeError(f"Could not clear the conversation: {exc}") from exc

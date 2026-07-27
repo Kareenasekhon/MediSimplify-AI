@@ -18,7 +18,11 @@ class OllamaProvider(BaseLLMProvider):
         self.model_name = settings.ollama_model
 
     def is_configured(self) -> bool:
-        return bool(settings.ollama_base_url.strip() and self.model_name.strip())
+        return bool(
+            settings.ollama_enabled
+            and settings.ollama_base_url.strip()
+            and self.model_name.strip()
+        )
 
     async def generate(
         self,
@@ -29,7 +33,10 @@ class OllamaProvider(BaseLLMProvider):
         require_json: bool = False,
     ) -> str:
         if not self.is_configured():
-            raise ProviderError("Ollama base URL or model is not configured.")
+            raise ProviderError(
+                "Ollama is disabled or not configured. Set OLLAMA_ENABLED=true "
+                "after starting Ollama and installing the configured model."
+            )
 
         payload = {
             "model": self.model_name,

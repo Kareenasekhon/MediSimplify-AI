@@ -31,18 +31,40 @@ def _provider_order(requested: ProviderName | None) -> list[ProviderName]:
 
 
 def parse_json_response(content: str) -> dict[str, Any] | list[Any]:
-    """Parse strict JSON while tolerating a single markdown JSON code fence."""
-    cleaned = content.strip()
-    fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", cleaned, flags=re.DOTALL)
+    """Parse an object/array even when an LLM adds fences or surrounding prose.
+
+    The decoder remains strict about the JSON value itself. It does not attempt to
+    repair truncated JSON, silently remove commas, or alter medical content.
+    """
+    cleaned = content.strip().lstrip("\ufeff")
+    fenced = re.search(
+        r"```(?:json)?\s*(.*?)\s*```",
+        cleaned,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
     if fenced:
         cleaned = fenced.group(1).strip()
-    try:
-        parsed = json.loads(cleaned)
-    except json.JSONDecodeError as exc:
-        raise ProviderError("The provider returned malformed JSON.") from exc
-    if not isinstance(parsed, (dict, list)):
-        raise ProviderError("The provider JSON response must be an object or array.")
-    return parsed
+
+    decoder = json.JSONDecoder()
+    last_error: json.JSONDecodeError | None = None
+
+    for index, character in enumerate(cleaned):
+        if character not in "{[":
+            continue
+        try:
+            parsed, _ = decoder.raw_decode(cleaned[index:])
+        except json.JSONDecodeError as exc:
+            last_error = exc
+            continue
+        if isinstance(parsed, (dict, list)):
+            return parsed
+
+    logger.debug(
+        "Malformed provider JSON response (length=%d, preview=%r)",
+        len(content),
+        content[:500],
+    )
+    raise ProviderError("The provider returned malformed JSON.") from last_error
 
 
 def validate_structured_response(content: str, schema: type[BaseModel]) -> BaseModel:

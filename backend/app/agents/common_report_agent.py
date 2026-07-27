@@ -99,7 +99,7 @@ JSON to repair:
                     LLMMessage(role="user", content=repair_prompt[:50_000]),
                 ],
                 temperature=0.0,
-                max_tokens=4096,
+                max_tokens=8192,
                 require_json=True,
             )
         )
@@ -163,7 +163,7 @@ Schema rules:
                 ),
             ],
             temperature=0.0,
-            max_tokens=4096,
+            max_tokens=8192,
             require_json=True,
         )
 

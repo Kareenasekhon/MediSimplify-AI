@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.5-flash"
     groq_api_key: str = ""
     groq_model: str = "llama-3.3-70b-versatile"
+    ollama_enabled: bool = False
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
     default_llm_provider: str = "gemini"

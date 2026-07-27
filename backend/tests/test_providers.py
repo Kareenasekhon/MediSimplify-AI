@@ -64,6 +64,21 @@ def test_parse_json_response_rejects_malformed_json() -> None:
         llm_service.parse_json_response("not-json")
 
 
+def test_parse_json_response_accepts_surrounding_text() -> None:
+    content = 'Here is the result:\n{"status": "ok"}\nThank you.'
+    assert llm_service.parse_json_response(content) == {"status": "ok"}
+
+
+def test_parse_json_response_accepts_uppercase_json_fence() -> None:
+    content = 'prefix\n```JSON\n{"status": "ok"}\n```\nsuffix'
+    assert llm_service.parse_json_response(content) == {"status": "ok"}
+
+
+def test_parse_json_response_rejects_truncated_json() -> None:
+    with pytest.raises(ProviderError, match="malformed JSON"):
+        llm_service.parse_json_response('{"status": "ok"')
+
+
 @pytest.mark.asyncio
 async def test_generate_uses_requested_provider(monkeypatch) -> None:
     fake = FakeProvider(ProviderName.GROQ, content="connected")

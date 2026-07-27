@@ -22,6 +22,8 @@ SESSION_DEFAULTS = {
     "last_extraction_message": None,
     "routing_result": None,
     "analysis_result": None,
+    "knowledge_base_status": None,
+    "chat_history": [],
 }
 
 for key, default in SESSION_DEFAULTS.items():
@@ -43,6 +45,8 @@ def reset_report_state() -> None:
         "last_extraction_message",
         "routing_result",
         "analysis_result",
+        "knowledge_base_status",
+        "chat_history",
         "uploaded_report",
         "camera_report",
     ):
@@ -126,7 +130,7 @@ with st.sidebar:
                 st.error(str(exc))
 
     st.markdown("---")
-    st.write("Current phase: **Phase 5 — Specialized Report Agents**")
+    st.write("Current phase: **Phase 6 — Conversational RAG & Report Q&A**")
     if st.button("Clear Session", use_container_width=True):
         st.session_state.clear()
         st.rerun()
@@ -394,6 +398,104 @@ with content_col:
                         st.warning(analysis.get("disclaimer", ""))
                         st.success("✅ Phase 5 complete for this report.")
 
+                        st.markdown("---")
+                        st.subheader("Ask Questions About This Report")
+                        st.caption(
+                            "Answers are grounded in the confirmed report using report-scoped "
+                            "retrieval. This chat does not provide diagnosis or treatment advice."
+                        )
+
+                        if st.session_state.knowledge_base_status is None:
+                            try:
+                                st.session_state.knowledge_base_status = (
+                                    api_client.get_knowledge_base_status(report_id)
+                                )
+                            except RuntimeError as exc:
+                                st.warning(str(exc))
+
+                        kb_status = st.session_state.knowledge_base_status or {}
+                        if not kb_status.get("ready"):
+                            if st.button(
+                                "Build Knowledge Base",
+                                type="primary",
+                                use_container_width=True,
+                            ):
+                                with st.spinner("Creating report embeddings and FAISS index..."):
+                                    try:
+                                        st.session_state.knowledge_base_status = (
+                                            api_client.build_knowledge_base(report_id)
+                                        )
+                                        st.rerun()
+                                    except RuntimeError as exc:
+                                        st.error(str(exc))
+                        else:
+                            kb_col1, kb_col2, kb_col3 = st.columns(3)
+                            kb_col1.metric("Knowledge base", "Ready")
+                            kb_col2.metric("Chunks", kb_status.get("chunk_count", 0))
+                            kb_col3.metric("Retriever", kb_status.get("vector_store", "FAISS"))
+                            st.caption(
+                                f"Embedding model: {kb_status.get('embedding_model', 'unknown')}"
+                            )
+
+                            action_col1, action_col2 = st.columns(2)
+                            if action_col1.button("Clear Conversation", use_container_width=True):
+                                try:
+                                    api_client.clear_conversation(report_id)
+                                    st.session_state.chat_history = []
+                                    st.rerun()
+                                except RuntimeError as exc:
+                                    st.error(str(exc))
+                            if action_col2.button("Rebuild Knowledge Base", use_container_width=True):
+                                with st.spinner("Rebuilding report knowledge base..."):
+                                    try:
+                                        st.session_state.knowledge_base_status = (
+                                            api_client.build_knowledge_base(report_id, force=True)
+                                        )
+                                        api_client.clear_conversation(report_id)
+                                        st.session_state.chat_history = []
+                                        st.rerun()
+                                    except RuntimeError as exc:
+                                        st.error(str(exc))
+
+                            for message in st.session_state.chat_history:
+                                with st.chat_message(message["role"]):
+                                    st.write(message["content"])
+                                    if message.get("sources"):
+                                        with st.expander("Report sections used"):
+                                            for source in message["sources"]:
+                                                st.caption(source.get("chunk_id", "Report section"))
+                                                st.write(source.get("excerpt", ""))
+
+                            question = st.chat_input("Ask a follow-up question about this report")
+                            if question:
+                                st.session_state.chat_history.append(
+                                    {"role": "user", "content": question}
+                                )
+                                language_key = {
+                                    "English": "english",
+                                    "हिंदी (Hindi)": "hindi",
+                                    "ਪੰਜਾਬੀ (Punjabi)": "punjabi",
+                                }[language]
+                                with st.spinner("Searching your report and preparing an answer..."):
+                                    try:
+                                        chat_result = api_client.ask_report_question(
+                                            report_id=report_id,
+                                            question=question,
+                                            language=language_key,
+                                            provider=provider,
+                                        )
+                                        st.session_state.chat_history.append(
+                                            {
+                                                "role": "assistant",
+                                                "content": chat_result.get("answer", ""),
+                                                "sources": chat_result.get("sources", []),
+                                            }
+                                        )
+                                        st.rerun()
+                                    except RuntimeError as exc:
+                                        st.session_state.chat_history.pop()
+                                        st.error(str(exc))
+
             st.button(
                 "Upload Another Report",
                 type="secondary",
@@ -403,6 +505,6 @@ with content_col:
         st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown(
-    "<div class='footer'>MediSimplify AI — Phase 5 Specialized Report Agents</div>",
+    "<div class='footer'>MediSimplify AI — Phase 6 Conversational RAG</div>",
     unsafe_allow_html=True,
 )

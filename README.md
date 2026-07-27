@@ -1,151 +1,254 @@
-# MediSimplify AI
+# 🩺 MediSimplify AI
 
-MediSimplify AI is a multilingual, multimodal, and voice-enabled medical report explanation platform. It helps users understand written findings of medical reports (such as blood laboratory results, radiology report texts, and prescriptions) in simple, everyday language.
+MediSimplify AI is an agentic AI platform that converts complex written medical reports into simple, multilingual, educational explanations. Users can upload a report, review the extracted content, route it to a specialized medical-report agent, and ask grounded follow-up questions using report-specific conversational RAG.
 
-## 1. Project Features (Planned)
-* **Multilingual Explanations**: English, Hindi (Devanagari script), and Punjabi (Gurmukhi script).
-* **Multimodal Extraction**: Upload PDF/DOCX/TXT files or images (JPEG, PNG, WEBP), or capture reports via device camera.
-* **Extraction Verification**: Review and correct extracted terms, decimal values, units, and drug names before analysis.
-* **Agent-Based Routing**: Auto-classify reports (Supervisor Agent) and process them using specialized agents (Blood Report, Prescription, Radiology, or Fallback Agents).
-* **Retrieval-Augmented Generation (RAG)**: Ground follow-up questions directly in the report context via session-specific FAISS indexing.
-* **Grandma Mode**: Highly simplified explanations suitable for elderly users.
-* **Voice-Enabled**: Speech-to-text input and text-to-speech output.
-* **Doctor Visit Pack**: Downloadable PDF summaries, ZIP packages, audio MP3s, and question lists for doctor consultation.
+> **Safety notice:** MediSimplify AI is an educational tool. It does not diagnose conditions, prescribe treatment, recommend medication changes, or replace a qualified healthcare professional.
 
----
+## Current capabilities
 
-## 2. Phase 1: Project Foundation
-This phase establishes the baseline codebase:
-* **Backend**: FastAPI web server with custom Pydantic settings loading, structured error handler, secure logging, custom exceptions, and health endpoints.
-* **Frontend**: Streamlit client dashboard displaying backend connectivity status, UI layout structure, and initial navigation components.
-* **Testing**: Automated backend testing suite using `pytest`.
+- PDF, DOCX, TXT, JPG, JPEG, PNG, WEBP, and camera input
+- OCR and multimodal extraction with a user-review step
+- Supervisor Agent for report-type routing
+- Blood Report, Prescription, Written Radiology, and Fallback agents
+- Explanations in English, Hindi, and Punjabi
+- Gemini, Groq, and local Ollama provider layer
+- FAISS-based report-specific knowledge base
+- Hugging Face sentence-transformer embeddings
+- Conversational follow-up questions grounded in confirmed report text
+- Report-scoped short-term memory, clear-chat, and rebuild controls
+- Automated FastAPI tests with mocked external model calls
 
----
+## Supported reports
 
-## 3. Setup and Execution
+| Report type | Status |
+|---|---|
+| Blood laboratory reports | ✅ Supported |
+| Prescriptions | ✅ Supported |
+| Written radiology findings | ✅ Supported |
+| Mixed or unclear written reports | ✅ Fallback agent |
+| Raw X-ray, CT, or MRI image diagnosis | ❌ Not supported |
+
+## Architecture
+
+```mermaid
+flowchart TD
+    A[Upload report or take photo] --> B[OCR / document extraction]
+    B --> C[User reviews and confirms text]
+    C --> D[Supervisor Agent]
+    D --> E[Blood Agent]
+    D --> F[Prescription Agent]
+    D --> G[Radiology Agent]
+    D --> H[Fallback Agent]
+    E --> I[Structured educational explanation]
+    F --> I
+    G --> I
+    H --> I
+    I --> J[Chunk confirmed report]
+    J --> K[Hugging Face embeddings]
+    K --> L[FAISS report index]
+    L --> M[Retriever]
+    M --> N[Conversational RAG answer]
+```
+
+## Development roadmap
+
+- [x] Phase 1 — Project foundation
+- [x] Phase 2 — Report upload, OCR, and confirmation
+- [x] Phase 3 — LLM provider abstraction
+- [x] Phase 4 — Supervisor Agent and report routing
+- [x] Phase 5 — Specialized report explanation agents
+- [x] Phase 6 — Conversational RAG and report Q&A
+- [ ] Phase 7 — Grandma Mode
+- [ ] Phase 8 — Voice conversation
+- [ ] Phase 9 — Doctor Visit Pack, deployment, and production polish
+
+## Phase 6 — Conversational RAG
+
+Phase 6 turns the one-time report explanation workflow into an interactive assistant.
+
+### RAG workflow
+
+```text
+Confirmed report text
+        ↓
+Overlapping report chunks
+        ↓
+all-MiniLM-L6-v2 embeddings
+        ↓
+FAISS IndexFlatIP
+        ↓
+Top-k report sections
+        ↓
+Provider-independent LLM generation
+        ↓
+Grounded educational answer with source excerpts
+```
+
+The knowledge base and conversation history are isolated by `report_id` and kept in memory only. Uploading a new report starts a separate report context. The API automatically builds the knowledge base on the first question, while the UI also provides explicit build and rebuild controls.
+
+### Phase 6 API endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/api/v1/chat` | Ask a grounded report question |
+| `POST` | `/api/v1/chat/{report_id}/knowledge-base` | Build or rebuild the report index |
+| `GET` | `/api/v1/chat/{report_id}/status` | Read knowledge-base status |
+| `DELETE` | `/api/v1/chat/{report_id}/conversation` | Clear report chat history |
+| `DELETE` | `/api/v1/chat/{report_id}/knowledge-base` | Remove the index and chat history |
+
+Example request:
+
+```json
+{
+  "report_id": "example-report-id",
+  "question": "What hemoglobin value is written in my report?",
+  "language": "english",
+  "preferred_provider": "gemini",
+  "top_k": 4
+}
+```
+
+## Main API endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/v1/health` | Backend health check |
+| `POST` | `/api/v1/reports/extract` | Upload and extract report content |
+| `POST` | `/api/v1/reports/{report_id}/confirm-analysis` | Save reviewed report text |
+| `GET` | `/api/v1/providers/status` | Read provider configuration status |
+| `POST` | `/api/v1/providers/test` | Run a small live provider test |
+| `POST` | `/api/v1/analysis/route` | Route report to a specialized agent |
+| `POST` | `/api/v1/analysis/{report_id}/manual-route` | Save manual report type |
+| `POST` | `/api/v1/analysis/explain` | Generate structured report explanation |
+
+## Project structure
+
+```text
+MediSimplify-AI/
+├── backend/
+│   ├── app/
+│   │   ├── agents/              # Supervisor and specialized agents
+│   │   ├── api/                 # FastAPI route modules
+│   │   ├── core/                # Configuration, logging, exceptions
+│   │   ├── models/              # Pydantic request/response models
+│   │   ├── providers/           # Gemini, Groq, and Ollama adapters
+│   │   └── services/            # OCR, routing, analysis, RAG, retrieval
+│   ├── tests/
+│   ├── .env.example
+│   └── requirements.txt
+├── frontend/
+│   ├── components/
+│   ├── services/
+│   ├── utils/
+│   ├── Home.py
+│   └── requirements.txt
+└── README.md
+```
+
+## Technology stack
+
+| Layer | Technology |
+|---|---|
+| Backend | FastAPI, Pydantic |
+| Frontend | Streamlit |
+| OCR / multimodal extraction | Gemini |
+| LLM providers | Gemini, Groq, Ollama |
+| Embeddings | `sentence-transformers/all-MiniLM-L6-v2` |
+| Vector search | FAISS `IndexFlatIP` |
+| Document extraction | pypdf, python-docx, Pillow |
+| Testing | Pytest, FastAPI TestClient |
+| Language | Python |
+
+## Setup
 
 ### Prerequisites
-* Python 3.10 or higher installed.
 
-### Backend Setup
-1. Navigate to the `backend/` directory:
-   ```bash
-   cd backend
-   ```
-2. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   # On Windows (PowerShell):
-   .\venv\Scripts\Activate.ps1
-   # On Linux/macOS:
-   source venv/bin/activate
-   ```
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Copy environment variables file:
-   ```bash
-   copy .env.example .env
-   ```
-5. Run tests:
-   ```bash
-   pytest
-   ```
-6. Run the FastAPI development server:
-   ```bash
-   uvicorn app.main:app --reload --port 8000
-   ```
+- Python 3.10 or newer
+- At least one configured LLM provider
+- Internet access on first run to download the Hugging Face embedding model
 
-### Frontend Setup
-1. Navigate to the `frontend/` directory:
-   ```bash
-   cd ../frontend
-   ```
-2. Create and activate a virtual environment (optional, or use a shared one):
-   ```bash
-   python -m venv venv
-   # Activate it
-   .\venv\Scripts\Activate.ps1
-   ```
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Run the Streamlit application:
-   ```bash
-   streamlit run Home.py
-   ```
+### Backend
 
-## 4. Phase 2: Report Upload and OCR
+```powershell
+cd backend
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+copy .env.example .env
+python -m pytest -q
+uvicorn app.main:app --reload --port 8000
+```
 
-Phase 2 adds the report-ingestion workflow:
+On Linux or macOS, activate the environment with:
 
-- Upload PDF, DOCX, TXT, JPG, JPEG, PNG, and WEBP reports.
-- Validate file extension, MIME type, size, and empty uploads.
-- Extract text from digital PDF, DOCX, and TXT documents.
-- Detect scanned PDFs and route them to Gemini multimodal extraction.
-- Check image resolution, brightness, contrast, blur, and orientation.
-- Return Pydantic-validated structured medical data.
-- Review and edit extracted report text before confirmation.
-- Store confirmed extraction data in the active in-memory report session.
+```bash
+source venv/bin/activate
+```
 
-### Phase 2 API
+### Frontend
 
-- `POST /api/v1/reports/extract`
-- `POST /api/v1/reports/{report_id}/confirm-analysis`
+Open a second terminal:
 
-Gemini calls require `GEMINI_API_KEY` in `backend/.env`. Automated tests mock provider calls and do not consume API quota.
+```powershell
+cd frontend
+pip install -r requirements.txt
+streamlit run Home.py
+```
 
-## Phase 3 — LLM Provider Layer
+## Environment variables
 
-Phase 3 adds a provider-independent text generation foundation for later medical agents.
+Copy `backend/.env.example` to `backend/.env` and add only the providers you intend to use.
 
-Implemented:
+```env
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash
 
-- Common `BaseLLMProvider` interface
-- Gemini text provider
-- Groq text provider
-- Ollama local provider
-- Provider factory
-- Configurable default and fallback order
-- Timeout and retry handling
-- JSON parsing and Pydantic-ready structured validation helper
-- Provider configuration status endpoint
-- Explicit provider connection-test endpoint
-- Streamlit provider status and test control
-- Mocked backend tests that do not consume API credits
+GROQ_API_KEY=
+GROQ_MODEL=llama-3.3-70b-versatile
 
-Provider endpoints:
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2
 
-- `GET /api/v1/providers/status`
-- `POST /api/v1/providers/test`
+DEFAULT_LLM_PROVIDER=gemini
+LLM_FALLBACK_PROVIDERS=groq,ollama
 
-The live test endpoint sends one small request and may consume provider credits. Normal automated tests mock provider calls.
+EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+RAG_CHUNK_SIZE=900
+RAG_CHUNK_OVERLAP=140
+```
 
-## Phase 4 — Supervisor Agent and Report Routing
+Never commit real API keys.
 
-Phase 4 adds safe report-type routing after extraction confirmation. Deterministic keyword scoring handles clear blood, prescription, and written-radiology reports without consuming LLM credits. The Supervisor Agent uses the Phase 3 provider layer only for uncertain text, and low-confidence or mixed results require manual confirmation.
+## Testing
 
-New endpoints:
+Run the backend test suite from `backend/`:
 
-- `POST /api/v1/analysis/route`
-- `POST /api/v1/analysis/{report_id}/manual-route`
+```bash
+python -m pytest -q
+```
 
-This phase performs classification only. It does not diagnose, interpret medical values, or implement the specialised agents.
+Current verified result for this Phase 6 build:
 
-## Phase 5 — Specialized Medical Report Agents
+```text
+36 passed
+```
 
-Phase 5 adds safe, structured educational explanations after Phase 4 routing:
+The test suite mocks provider generation and embedding behavior, so normal automated tests do not consume LLM credits or download a model.
 
-- Blood report agent
-- Prescription agent
-- Written radiology report agent
-- Fallback agent for mixed, unsupported, or unclear content
-- `POST /api/v1/analysis/explain`
-- English, Hindi, and Punjabi explanation selection
-- Structured values, instructions, notes, unclear content, doctor questions, and disclaimer
-- Provider fallback through the Phase 3 LLM layer
-- Automated tests with mocked model calls
+## Safety principles
 
-The agents use only user-confirmed text. They do not diagnose, prescribe treatment, change medication instructions, or interpret raw radiology images.
+MediSimplify AI:
+
+- uses only user-confirmed report text for analysis and retrieval;
+- keeps report values, units, dates, and medication instructions unchanged;
+- states when requested information is not present in the report;
+- does not diagnose disease;
+- does not prescribe treatment or advise medication changes;
+- reminds users to consult a qualified healthcare professional for decisions.
+
+## Author
+
+**Kareena Sekhon**
+
+GitHub: `Kareenasekhon`
