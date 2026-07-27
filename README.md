@@ -133,3 +133,19 @@ New endpoints:
 - `POST /api/v1/analysis/{report_id}/manual-route`
 
 This phase performs classification only. It does not diagnose, interpret medical values, or implement the specialised agents.
+
+## Phase 5 — Specialized Medical Report Agents
+
+Phase 5 adds safe, structured educational explanations after Phase 4 routing:
+
+- Blood report agent
+- Prescription agent
+- Written radiology report agent
+- Fallback agent for mixed, unsupported, or unclear content
+- `POST /api/v1/analysis/explain`
+- English, Hindi, and Punjabi explanation selection
+- Structured values, instructions, notes, unclear content, doctor questions, and disclaimer
+- Provider fallback through the Phase 3 LLM layer
+- Automated tests with mocked model calls
+
+The agents use only user-confirmed text. They do not diagnose, prescribe treatment, change medication instructions, or interpret raw radiology images.

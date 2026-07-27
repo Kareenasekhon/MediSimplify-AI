@@ -152,3 +152,30 @@ class APIClient:
             raise RuntimeError(self._extract_error(exc.response)) from exc
         except httpx.RequestError as exc:
             raise RuntimeError(f"Could not reach the manual routing API: {exc}") from exc
+
+    def explain_report(
+        self,
+        report_id: str,
+        language: str,
+        provider: str | None = None,
+    ) -> dict:
+        """Run the specialized report explanation agent selected by Phase 4."""
+        payload = {
+            "report_id": report_id,
+            "language": language.lower(),
+            "preferred_provider": (
+                provider.lower().replace(" (local)", "") if provider else None
+            ),
+        }
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                response = client.post(
+                    f"{self.base_url}/api/v1/analysis/explain",
+                    json=payload,
+                )
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(self._extract_error(exc.response)) from exc
+        except httpx.RequestError as exc:
+            raise RuntimeError(f"Could not reach the report explanation API: {exc}") from exc

@@ -1,7 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import routes_analysis, routes_extraction, routes_health, routes_providers
+from app.api import (
+    routes_analysis,
+    routes_extraction,
+    routes_health,
+    routes_providers,
+    routes_report_analysis,
+)
 from app.core import constants
 from app.core.error_handlers import register_error_handlers
 from app.core.logging_config import setup_logging
@@ -32,6 +38,7 @@ app.include_router(routes_health.router, prefix=constants.API_V1_STR)
 app.include_router(routes_extraction.router, prefix=constants.API_V1_STR)
 app.include_router(routes_providers.router, prefix=constants.API_V1_STR)
 app.include_router(routes_analysis.router, prefix=constants.API_V1_STR)
+app.include_router(routes_report_analysis.router, prefix=constants.API_V1_STR)
 
 register_error_handlers(app)
 

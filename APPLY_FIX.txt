@@ -1,0 +1,14 @@
+Phase 5 multilingual schema fix
+
+Copy the backend folder from this package into the root of your existing
+MediSimplify-AI repository and choose Replace when Windows asks.
+
+Then run:
+  cd backend
+  python -m pytest
+
+This fix:
+- keeps JSON keys in English for Hindi and Punjabi output
+- translates only human-readable values
+- adds one automatic repair request when the first JSON response fails validation
+- adds multilingual schema tests

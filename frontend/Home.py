@@ -21,6 +21,7 @@ SESSION_DEFAULTS = {
     "captured_camera_report": None,
     "last_extraction_message": None,
     "routing_result": None,
+    "analysis_result": None,
 }
 
 for key, default in SESSION_DEFAULTS.items():
@@ -41,6 +42,7 @@ def reset_report_state() -> None:
         "captured_camera_report",
         "last_extraction_message",
         "routing_result",
+        "analysis_result",
         "uploaded_report",
         "camera_report",
     ):
@@ -124,7 +126,7 @@ with st.sidebar:
                 st.error(str(exc))
 
     st.markdown("---")
-    st.write("Current phase: **Phase 3 — LLM Provider Layer**")
+    st.write("Current phase: **Phase 5 — Specialized Report Agents**")
     if st.button("Clear Session", use_container_width=True):
         st.session_state.clear()
         st.rerun()
@@ -328,6 +330,70 @@ with content_col:
                 else:
                     st.success("✅ Phase 4 complete: Report routed and ready for its specialised agent.")
 
+                    if st.session_state.analysis_result is None:
+                        if st.button("Explain Report", type="primary", use_container_width=True):
+                            language_key = {
+                                "English": "english",
+                                "हिंदी (Hindi)": "hindi",
+                                "ਪੰਜਾਬੀ (Punjabi)": "punjabi",
+                            }[language]
+                            with st.spinner("The specialised agent is preparing a safe explanation..."):
+                                try:
+                                    st.session_state.analysis_result = api_client.explain_report(
+                                        report_id=report_id,
+                                        language=language_key,
+                                        provider=provider,
+                                    )
+                                    st.rerun()
+                                except RuntimeError as exc:
+                                    st.error(str(exc))
+                    else:
+                        analysis = st.session_state.analysis_result
+                        st.subheader("Educational Report Explanation")
+                        st.caption(
+                            f"Agent: {analysis.get('agent_used', 'unknown')} · "
+                            f"Provider: {analysis.get('provider_used', 'unknown')} · "
+                            f"Model: {analysis.get('model', 'unknown')}"
+                        )
+                        st.write(analysis.get("summary", ""))
+
+                        items = analysis.get("items", [])
+                        if items:
+                            st.markdown("#### Report details")
+                            for index, item in enumerate(items, start=1):
+                                title = item.get("name") or f"Item {index}"
+                                with st.expander(title, expanded=index <= 3):
+                                    details = []
+                                    for label, key in (
+                                        ("Value", "observed_value"),
+                                        ("Unit", "unit"),
+                                        ("Reference range", "reference_range"),
+                                        ("Status", "status"),
+                                        ("Dosage", "dosage"),
+                                        ("Frequency", "frequency"),
+                                        ("Duration", "duration"),
+                                        ("Section", "section"),
+                                    ):
+                                        if item.get(key):
+                                            details.append(f"**{label}:** {item[key]}")
+                                    if details:
+                                        st.markdown("  \n".join(details))
+                                    st.write(item.get("simple_explanation", ""))
+
+                        for heading, key, message_type in (
+                            ("Important notes", "important_notes", "info"),
+                            ("Unclear information", "unclear_information", "warning"),
+                            ("Questions for your doctor", "questions_for_doctor", "info"),
+                        ):
+                            values = analysis.get(key, [])
+                            if values:
+                                st.markdown(f"#### {heading}")
+                                for value in values:
+                                    getattr(st, message_type)(value)
+
+                        st.warning(analysis.get("disclaimer", ""))
+                        st.success("✅ Phase 5 complete for this report.")
+
             st.button(
                 "Upload Another Report",
                 type="secondary",
@@ -337,6 +403,6 @@ with content_col:
         st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown(
-    "<div class='footer'>MediSimplify AI — Phase 4 Supervisor Agent Routing</div>",
+    "<div class='footer'>MediSimplify AI — Phase 5 Specialized Report Agents</div>",
     unsafe_allow_html=True,
 )
