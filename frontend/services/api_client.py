@@ -116,3 +116,39 @@ class APIClient:
             raise RuntimeError(self._extract_error(exc.response)) from exc
         except httpx.RequestError as exc:
             raise RuntimeError(f"Could not reach the provider test API: {exc}") from exc
+
+    def route_report(self, report_id: str, provider: str | None = None) -> dict:
+        """Run supervisor routing for a confirmed report."""
+        payload = {
+            "report_id": report_id,
+            "preferred_provider": (
+                provider.lower().replace(" (local)", "") if provider else None
+            ),
+        }
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                response = client.post(
+                    f"{self.base_url}/api/v1/analysis/route",
+                    json=payload,
+                )
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(self._extract_error(exc.response)) from exc
+        except httpx.RequestError as exc:
+            raise RuntimeError(f"Could not reach the routing API: {exc}") from exc
+
+    def set_manual_route(self, report_id: str, report_type: str) -> dict:
+        """Save a user-selected report route."""
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                response = client.post(
+                    f"{self.base_url}/api/v1/analysis/{report_id}/manual-route",
+                    json={"report_type": report_type},
+                )
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(self._extract_error(exc.response)) from exc
+        except httpx.RequestError as exc:
+            raise RuntimeError(f"Could not reach the manual routing API: {exc}") from exc

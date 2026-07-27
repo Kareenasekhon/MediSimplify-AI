@@ -122,3 +122,14 @@ Provider endpoints:
 - `POST /api/v1/providers/test`
 
 The live test endpoint sends one small request and may consume provider credits. Normal automated tests mock provider calls.
+
+## Phase 4 — Supervisor Agent and Report Routing
+
+Phase 4 adds safe report-type routing after extraction confirmation. Deterministic keyword scoring handles clear blood, prescription, and written-radiology reports without consuming LLM credits. The Supervisor Agent uses the Phase 3 provider layer only for uncertain text, and low-confidence or mixed results require manual confirmation.
+
+New endpoints:
+
+- `POST /api/v1/analysis/route`
+- `POST /api/v1/analysis/{report_id}/manual-route`
+
+This phase performs classification only. It does not diagnose, interpret medical values, or implement the specialised agents.

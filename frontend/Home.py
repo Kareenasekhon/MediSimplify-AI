@@ -20,6 +20,7 @@ SESSION_DEFAULTS = {
     "report_source": "Upload File",
     "captured_camera_report": None,
     "last_extraction_message": None,
+    "routing_result": None,
 }
 
 for key, default in SESSION_DEFAULTS.items():
@@ -39,6 +40,7 @@ def reset_report_state() -> None:
         "confirmation_result",
         "captured_camera_report",
         "last_extraction_message",
+        "routing_result",
         "uploaded_report",
         "camera_report",
     ):
@@ -278,7 +280,54 @@ with content_col:
             st.rerun()
 
         if st.session_state.extraction_confirmed:
-            st.success("✅ Phase 2 complete for this report: Ready for analysis.")
+            st.success("✅ Phase 2 complete for this report: Ready for routing.")
+            report_id = st.session_state.extraction_result.get("report_id")
+
+            if st.session_state.routing_result is None:
+                if st.button("Detect Report Type", type="primary", use_container_width=True):
+                    with st.spinner("Supervisor Agent is identifying the report type..."):
+                        try:
+                            st.session_state.routing_result = api_client.route_report(
+                                report_id=report_id,
+                                provider=provider,
+                            )
+                            st.rerun()
+                        except RuntimeError as exc:
+                            st.error(str(exc))
+            else:
+                route = st.session_state.routing_result
+                st.subheader("Supervisor Routing")
+                st.metric(
+                    "Detected report type",
+                    route["report_type"].replace("_", " ").title(),
+                )
+                st.progress(float(route.get("confidence", 0.0)))
+                st.caption(
+                    f"Confidence: {float(route.get('confidence', 0.0)):.0%} · "
+                    f"Method: {route.get('method', 'unknown')} · "
+                    f"Selected agent: {route.get('selected_agent', 'fallback_agent')}"
+                )
+                st.write(route.get("reason", ""))
+                for warning in route.get("warnings", []):
+                    st.warning(warning)
+
+                if route.get("requires_manual_selection"):
+                    manual_type = st.selectbox(
+                        "Confirm the report type manually",
+                        ["blood_report", "prescription", "radiology_report", "mixed_report", "unknown"],
+                        format_func=lambda value: value.replace("_", " ").title(),
+                    )
+                    if st.button("Save Manual Route", use_container_width=True):
+                        try:
+                            st.session_state.routing_result = api_client.set_manual_route(
+                                report_id, manual_type
+                            )
+                            st.rerun()
+                        except RuntimeError as exc:
+                            st.error(str(exc))
+                else:
+                    st.success("✅ Phase 4 complete: Report routed and ready for its specialised agent.")
+
             st.button(
                 "Upload Another Report",
                 type="secondary",
@@ -288,6 +337,6 @@ with content_col:
         st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown(
-    "<div class='footer'>MediSimplify AI — Phase 3 LLM Provider Foundation</div>",
+    "<div class='footer'>MediSimplify AI — Phase 4 Supervisor Agent Routing</div>",
     unsafe_allow_html=True,
 )
