@@ -96,3 +96,29 @@ Phase 2 adds the report-ingestion workflow:
 - `POST /api/v1/reports/{report_id}/confirm-analysis`
 
 Gemini calls require `GEMINI_API_KEY` in `backend/.env`. Automated tests mock provider calls and do not consume API quota.
+
+## Phase 3 — LLM Provider Layer
+
+Phase 3 adds a provider-independent text generation foundation for later medical agents.
+
+Implemented:
+
+- Common `BaseLLMProvider` interface
+- Gemini text provider
+- Groq text provider
+- Ollama local provider
+- Provider factory
+- Configurable default and fallback order
+- Timeout and retry handling
+- JSON parsing and Pydantic-ready structured validation helper
+- Provider configuration status endpoint
+- Explicit provider connection-test endpoint
+- Streamlit provider status and test control
+- Mocked backend tests that do not consume API credits
+
+Provider endpoints:
+
+- `GET /api/v1/providers/status`
+- `POST /api/v1/providers/test`
+
+The live test endpoint sends one small request and may consume provider credits. Normal automated tests mock provider calls.

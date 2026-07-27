@@ -69,6 +69,10 @@ st.markdown(
 
 api_client = APIClient()
 health_status = api_client.check_health()
+try:
+    provider_status = api_client.get_provider_status() if health_status.get("status") == "healthy" else {}
+except RuntimeError:
+    provider_status = {}
 
 with st.sidebar:
     st.markdown("## MediSimplify AI")
@@ -81,10 +85,44 @@ with st.sidebar:
         "LLM Provider",
         ["Gemini", "Groq", "Ollama (Local)"],
         index=0,
-        help="Phase 2 multimodal extraction currently requires Gemini.",
+        help=(
+            "Phase 2 image extraction uses Gemini. Phase 3 prepares Gemini, "
+            "Groq, and local Ollama for later medical agents."
+        ),
     )
+
+    status_by_name = {
+        item.get("provider"): item
+        for item in provider_status.get("providers", [])
+    }
+    selected_key = provider.lower().replace(" (local)", "")
+    selected_status = status_by_name.get(selected_key)
+    if selected_status:
+        if selected_status.get("available"):
+            st.success(
+                f"{provider} configured: {selected_status.get('model', 'unknown model')}"
+            )
+        else:
+            st.warning(f"{provider}: {selected_status.get('detail', 'Not available')}")
+
+    if st.button(
+        "Test Selected Provider",
+        use_container_width=True,
+        help="Makes one small live model request and may consume API credits.",
+        disabled=not selected_status or not selected_status.get("configured", False),
+    ):
+        with st.spinner(f"Testing {provider}..."):
+            try:
+                test_result = api_client.test_provider(provider)
+                st.success(
+                    f"Connected through {test_result.get('provider')} "
+                    f"using {test_result.get('model')}."
+                )
+            except RuntimeError as exc:
+                st.error(str(exc))
+
     st.markdown("---")
-    st.write("Current phase: **Phase 2 — Report Upload & OCR**")
+    st.write("Current phase: **Phase 3 — LLM Provider Layer**")
     if st.button("Clear Session", use_container_width=True):
         st.session_state.clear()
         st.rerun()
@@ -250,6 +288,6 @@ with content_col:
         st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown(
-    "<div class='footer'>MediSimplify AI — Phase 2 Report Upload & OCR</div>",
+    "<div class='footer'>MediSimplify AI — Phase 3 LLM Provider Foundation</div>",
     unsafe_allow_html=True,
 )

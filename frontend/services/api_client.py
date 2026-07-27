@@ -88,3 +88,31 @@ class APIClient:
             return str(payload.get("message") or payload.get("detail") or payload)
         except ValueError:
             return f"Backend returned HTTP {response.status_code}."
+
+    def get_provider_status(self) -> dict:
+        """Read configured provider status without making billable model calls."""
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                response = client.get(f"{self.base_url}/api/v1/providers/status")
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(self._extract_error(exc.response)) from exc
+        except httpx.RequestError as exc:
+            raise RuntimeError(f"Could not reach the provider status API: {exc}") from exc
+
+    def test_provider(self, provider: str) -> dict:
+        """Run an explicit provider connection test. This may consume provider credits."""
+        payload = {"provider": provider.lower().replace(" (local)", "")}
+        try:
+            with httpx.Client(timeout=60.0) as client:
+                response = client.post(
+                    f"{self.base_url}/api/v1/providers/test",
+                    json=payload,
+                )
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(self._extract_error(exc.response)) from exc
+        except httpx.RequestError as exc:
+            raise RuntimeError(f"Could not reach the provider test API: {exc}") from exc
