@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = 45.0
     llm_max_retries: int = 1
     llm_retry_delay_seconds: float = 0.5
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    rag_chunk_size: int = 900
+    rag_chunk_overlap: int = 140
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",

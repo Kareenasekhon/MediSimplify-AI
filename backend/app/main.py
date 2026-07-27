@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
     routes_analysis,
+    routes_chat,
     routes_extraction,
     routes_health,
     routes_providers,
@@ -39,6 +40,7 @@ app.include_router(routes_extraction.router, prefix=constants.API_V1_STR)
 app.include_router(routes_providers.router, prefix=constants.API_V1_STR)
 app.include_router(routes_analysis.router, prefix=constants.API_V1_STR)
 app.include_router(routes_report_analysis.router, prefix=constants.API_V1_STR)
+app.include_router(routes_chat.router, prefix=constants.API_V1_STR)
 
 register_error_handlers(app)
 
