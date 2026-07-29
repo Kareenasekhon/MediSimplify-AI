@@ -214,8 +214,10 @@ class APIClient:
         language: str,
         provider: str | None = None,
         top_k: int = 4,
+        mode: str = "auto",
+        explanation_style: str = "standard",
     ) -> dict:
-        """Ask a grounded follow-up question about the current report."""
+        """Ask the Phase 7 intelligent medical assistant a question."""
         payload = {
             "report_id": report_id,
             "question": question,
@@ -224,6 +226,8 @@ class APIClient:
                 provider.lower().replace(" (local)", "") if provider else None
             ),
             "top_k": top_k,
+            "mode": mode,
+            "explanation_style": explanation_style,
         }
         try:
             with httpx.Client(timeout=self.timeout) as client:
@@ -234,6 +238,21 @@ class APIClient:
             raise RuntimeError(self._extract_error(exc.response)) from exc
         except httpx.RequestError as exc:
             raise RuntimeError(f"Could not reach the conversational RAG API: {exc}") from exc
+
+
+    def get_suggested_questions(self, report_id: str) -> dict:
+        """Return safe report-type-aware starter questions."""
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                response = client.get(
+                    f"{self.base_url}/api/v1/chat/{report_id}/suggested-questions"
+                )
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(self._extract_error(exc.response)) from exc
+        except httpx.RequestError as exc:
+            raise RuntimeError(f"Could not load suggested questions: {exc}") from exc
 
     def clear_conversation(self, report_id: str) -> dict:
         """Clear in-memory chat history for one report."""

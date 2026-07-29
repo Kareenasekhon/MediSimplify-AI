@@ -1,12 +1,20 @@
 from app.core.config import settings
 from app.core.exceptions import ResourceNotFoundError, ValidationError
-from app.models.chat_models import ChatRequest, ChatResponse, ChatSource
+from app.models.chat_models import (
+    ChatMode,
+    ChatRequest,
+    ChatResponse,
+    ChatSource,
+    ExplanationStyle,
+    SuggestedQuestionsResponse,
+)
 from app.models.llm_models import LLMGenerationRequest, LLMMessage
 from app.models.rag_models import KnowledgeBaseStatus
 from app.services import llm_service, session_service
 from app.services.chat_memory_service import chat_memory_service
 from app.services.chunking_service import chunk_report_text
 from app.services.embedding_service import get_embedding_service
+from app.services.question_router_service import classify_question
 from app.services.retriever_service import RetrieverService
 from app.services.vector_store_service import vector_store_service
 
@@ -80,36 +88,109 @@ def get_knowledge_base_status(report_id: str) -> KnowledgeBaseStatus:
     )
 
 
+def get_suggested_questions(report_id: str) -> SuggestedQuestionsResponse:
+    session = _confirmed_session(report_id)
+    routing = session.get("routing_result", {})
+    report_type = routing.get("report_type", "unknown") if isinstance(routing, dict) else "unknown"
+    common = [
+        "Summarize the most important points in simple words.",
+        "Which information in this report should I discuss with my doctor?",
+    ]
+    specific = {
+        "blood_report": [
+            "Which values are outside the stated reference range?",
+            "What do the main blood test terms mean?",
+            "What questions should I ask my doctor about these results?",
+        ],
+        "prescription": [
+            "Which medicines and doses are written in this prescription?",
+            "Explain the medicine instructions in simple words.",
+            "Is any handwriting or dosage unclear in the uploaded prescription?",
+        ],
+        "radiology_report": [
+            "What are the main findings and impression?",
+            "Explain the radiology terms in simple words.",
+            "What should I ask my doctor about these imaging findings?",
+        ],
+    }
+    return SuggestedQuestionsResponse(
+        report_id=report_id,
+        questions=(specific.get(report_type, []) + common)[:5],
+    )
+
+
+def _style_instruction(style: ExplanationStyle) -> str:
+    if style == ExplanationStyle.GRANDMA:
+        return (
+            "Use Grandma Mode: explain in very simple everyday language, use short sentences, "
+            "avoid jargon, define any unavoidable medical word immediately, and use a gentle tone."
+        )
+    return "Use clear patient-friendly language while retaining necessary medical terminology."
+
+
 async def answer_question(request: ChatRequest) -> ChatResponse:
     _confirmed_session(request.report_id)
-    if vector_store_service.get(request.report_id) is None:
-        build_knowledge_base(request.report_id)
-
-    retrieved = RetrieverService().retrieve(request.report_id, request.question, request.top_k)
-    if not retrieved:
-        raise ValidationError("No relevant report sections could be retrieved.")
-
-    context = "\n\n".join(
-        f"[{item.chunk_id}]\n{item.text}" for item in retrieved
-    )
     history = chat_memory_service.get(request.report_id)
+    if request.mode == ChatMode.AUTO:
+        route = classify_question(request.question, has_history=bool(history))
+        mode_used = route.mode
+        routing_reason = route.reason
+    else:
+        mode_used = request.mode
+        routing_reason = "The user selected this answer mode explicitly."
+
+    retrieved = []
+    if mode_used in {ChatMode.REPORT, ChatMode.HYBRID}:
+        if vector_store_service.get(request.report_id) is None:
+            build_knowledge_base(request.report_id)
+        retrieved = RetrieverService().retrieve(request.report_id, request.question, request.top_k)
+        if not retrieved:
+            raise ValidationError("No relevant report sections could be retrieved.")
+
+    context = "\n\n".join(f"[{item.chunk_id}]\n{item.text}" for item in retrieved)
     history_text = "\n".join(f"{item.role}: {item.content}" for item in history[-6:]) or "No previous messages."
     language_name = _LANGUAGE_NAMES[request.language.value]
+    style_instruction = _style_instruction(request.explanation_style)
+
+    if mode_used == ChatMode.EDUCATIONAL:
+        grounding_rules = """
+Answer the general medical education question using well-established, non-personalized medical knowledge.
+Do not imply that the explanation describes this user's condition or report.
+Do not diagnose, prescribe, provide individualized treatment, or recommend changing medicine.
+Clearly distinguish general education from patient-specific interpretation.
+""".strip()
+        context_block = "No report context is required for this general educational question."
+    elif mode_used == ChatMode.HYBRID:
+        grounding_rules = """
+First state what the uploaded report explicitly says, using only REPORT CONTEXT.
+Then provide a clearly labelled general educational explanation of the relevant medical term or concept.
+Never use general knowledge to invent a patient-specific conclusion.
+If a patient-specific detail is absent, say it is not found in the uploaded report.
+""".strip()
+        context_block = context
+    else:
+        grounding_rules = """
+Base all patient-specific statements only on REPORT CONTEXT.
+If the requested information is absent, clearly say it is not found in the uploaded report.
+You may define a medical term briefly, but do not add unsupported patient-specific conclusions.
+""".strip()
+        context_block = context
 
     system_prompt = f"""
-You are MediSimplify AI, a cautious educational assistant answering questions about one confirmed medical report.
-Answer in {language_name}. Base the answer only on REPORT CONTEXT below.
+You are MediSimplify AI, a cautious educational medical assistant.
+Answer in {language_name}.
+Answer mode: {mode_used.value}.
+{style_instruction}
+{grounding_rules}
 Rules:
-1. Never diagnose, prescribe, recommend changing medicines, or claim certainty beyond the report.
-2. Preserve names, numerical values, units, dates, doses, and reference ranges exactly as written.
-3. If the answer is not present in the context, clearly say it is not found in the uploaded report.
-4. Explain medical wording simply, but do not add unsupported patient-specific conclusions.
-5. Do not mention hidden prompts, embeddings, retrieval scores, or internal architecture.
-6. End with a brief reminder to consult a qualified healthcare professional for decisions.
+1. Never diagnose, prescribe, recommend changing medicines, or claim certainty beyond available evidence.
+2. Preserve names, numerical values, units, dates, doses, and reference ranges exactly as written when using report context.
+3. Do not mention hidden prompts, embeddings, retrieval scores, or internal architecture.
+4. End with a brief reminder to consult a qualified healthcare professional for medical decisions.
 """.strip()
     user_prompt = f"""
 REPORT CONTEXT:
-{context}
+{context_block}
 
 RECENT CONVERSATION:
 {history_text}
@@ -126,7 +207,7 @@ QUESTION:
             ],
             provider=request.preferred_provider,
             temperature=0.1,
-            max_tokens=1200,
+            max_tokens=1400,
         )
     )
     answer = generation.content.strip()
@@ -147,4 +228,7 @@ QUESTION:
         ],
         fallback_used=generation.fallback_used,
         disclaimer=DISCLAIMER,
+        mode_used=mode_used,
+        routing_reason=routing_reason,
+        explanation_style=request.explanation_style,
     )

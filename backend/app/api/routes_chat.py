@@ -1,17 +1,31 @@
 from fastapi import APIRouter, status
 
-from app.models.chat_models import ChatRequest, ChatResponse, ClearConversationResponse
+from app.models.chat_models import (
+    ChatRequest,
+    ChatResponse,
+    ClearConversationResponse,
+    SuggestedQuestionsResponse,
+)
 from app.models.rag_models import KnowledgeBaseStatus
 from app.services import rag_service
 from app.services.chat_memory_service import chat_memory_service
 from app.services.vector_store_service import vector_store_service
 
-router = APIRouter(prefix="/chat", tags=["Conversational RAG"])
+router = APIRouter(prefix="/chat", tags=["Intelligent Medical Assistant"])
 
 
 @router.post("", response_model=ChatResponse, status_code=status.HTTP_200_OK)
 async def chat_with_report(request: ChatRequest) -> ChatResponse:
     return await rag_service.answer_question(request)
+
+
+@router.get(
+    "/{report_id}/suggested-questions",
+    response_model=SuggestedQuestionsResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def suggested_questions(report_id: str) -> SuggestedQuestionsResponse:
+    return rag_service.get_suggested_questions(report_id)
 
 
 @router.post(

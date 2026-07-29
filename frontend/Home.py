@@ -24,6 +24,8 @@ SESSION_DEFAULTS = {
     "analysis_result": None,
     "knowledge_base_status": None,
     "chat_history": [],
+    "suggested_questions": [],
+    "pending_chat_question": None,
 }
 
 for key, default in SESSION_DEFAULTS.items():
@@ -130,7 +132,7 @@ with st.sidebar:
                 st.error(str(exc))
 
     st.markdown("---")
-    st.write("Current phase: **Phase 6 — Conversational RAG & Report Q&A**")
+    st.write("Current phase: **Phase 7 — Intelligent Medical Assistant & Grandma Mode**")
     if st.button("Clear Session", use_container_width=True):
         st.session_state.clear()
         st.rerun()
@@ -457,17 +459,62 @@ with content_col:
                                     except RuntimeError as exc:
                                         st.error(str(exc))
 
+                            st.subheader("Intelligent Medical Assistant")
+                            mode_col, style_col = st.columns(2)
+                            assistant_mode = mode_col.selectbox(
+                                "Answer mode",
+                                ["auto", "report", "educational", "hybrid"],
+                                format_func=lambda value: {
+                                    "auto": "Smart Auto Routing",
+                                    "report": "Report Only",
+                                    "educational": "General Education",
+                                    "hybrid": "Report + Education",
+                                }[value],
+                            )
+                            grandma_mode = style_col.toggle(
+                                "Grandma Mode",
+                                help="Uses very simple, gentle, everyday language.",
+                            )
+
+                            if not st.session_state.suggested_questions:
+                                try:
+                                    suggestions = api_client.get_suggested_questions(report_id)
+                                    st.session_state.suggested_questions = suggestions.get("questions", [])
+                                except RuntimeError:
+                                    st.session_state.suggested_questions = []
+
+                            if st.session_state.suggested_questions:
+                                st.caption("Suggested questions")
+                                suggestion_columns = st.columns(2)
+                                for index, suggestion in enumerate(st.session_state.suggested_questions):
+                                    if suggestion_columns[index % 2].button(
+                                        suggestion,
+                                        key=f"suggestion_{index}",
+                                        use_container_width=True,
+                                    ):
+                                        st.session_state.pending_chat_question = suggestion
+                                        st.rerun()
+
                             for message in st.session_state.chat_history:
                                 with st.chat_message(message["role"]):
                                     st.write(message["content"])
+                                    if message.get("mode_used"):
+                                        st.caption(
+                                            f"Mode: {message['mode_used'].replace('_', ' ').title()} · "
+                                            f"Style: {message.get('explanation_style', 'standard').title()}"
+                                        )
                                     if message.get("sources"):
                                         with st.expander("Report sections used"):
                                             for source in message["sources"]:
                                                 st.caption(source.get("chunk_id", "Report section"))
                                                 st.write(source.get("excerpt", ""))
 
-                            question = st.chat_input("Ask a follow-up question about this report")
+                            typed_question = st.chat_input(
+                                "Ask about your report or a general medical term"
+                            )
+                            question = st.session_state.pending_chat_question or typed_question
                             if question:
+                                st.session_state.pending_chat_question = None
                                 st.session_state.chat_history.append(
                                     {"role": "user", "content": question}
                                 )
@@ -476,19 +523,27 @@ with content_col:
                                     "हिंदी (Hindi)": "hindi",
                                     "ਪੰਜਾਬੀ (Punjabi)": "punjabi",
                                 }[language]
-                                with st.spinner("Searching your report and preparing an answer..."):
+                                with st.spinner("Choosing the safest answer mode and preparing your answer..."):
                                     try:
                                         chat_result = api_client.ask_report_question(
                                             report_id=report_id,
                                             question=question,
                                             language=language_key,
                                             provider=provider,
+                                            mode=assistant_mode,
+                                            explanation_style=(
+                                                "grandma" if grandma_mode else "standard"
+                                            ),
                                         )
                                         st.session_state.chat_history.append(
                                             {
                                                 "role": "assistant",
                                                 "content": chat_result.get("answer", ""),
                                                 "sources": chat_result.get("sources", []),
+                                                "mode_used": chat_result.get("mode_used"),
+                                                "explanation_style": chat_result.get(
+                                                    "explanation_style", "standard"
+                                                ),
                                             }
                                         )
                                         st.rerun()
@@ -505,6 +560,6 @@ with content_col:
         st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown(
-    "<div class='footer'>MediSimplify AI — Phase 6 Conversational RAG</div>",
+    "<div class='footer'>MediSimplify AI — Phase 7 Intelligent Medical Assistant</div>",
     unsafe_allow_html=True,
 )
