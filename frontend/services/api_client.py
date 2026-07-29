@@ -254,6 +254,56 @@ class APIClient:
         except httpx.RequestError as exc:
             raise RuntimeError(f"Could not load suggested questions: {exc}") from exc
 
+
+    def get_voice_status(self) -> dict:
+        """Return Phase 8 local transcription and speech capability status."""
+        try:
+            with httpx.Client(timeout=self.timeout) as client:
+                response = client.get(f"{self.base_url}/api/v1/voice/status")
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(self._extract_error(exc.response)) from exc
+        except httpx.RequestError as exc:
+            raise RuntimeError(f"Could not reach the voice API: {exc}") from exc
+
+    def transcribe_audio(
+        self,
+        filename: str,
+        content: bytes,
+        content_type: str,
+        language: str | None = None,
+    ) -> dict:
+        """Transcribe a browser microphone recording using local Whisper."""
+        files = {"audio": (filename, content, content_type)}
+        data = {"language": language or ""}
+        try:
+            with httpx.Client(timeout=httpx.Timeout(180.0, connect=10.0)) as client:
+                response = client.post(
+                    f"{self.base_url}/api/v1/voice/transcribe",
+                    files=files,
+                    data=data,
+                )
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(self._extract_error(exc.response)) from exc
+        except httpx.RequestError as exc:
+            raise RuntimeError(f"Could not reach the transcription API: {exc}") from exc
+
+    def synthesize_speech(self, text: str, language: str, slow: bool = False) -> bytes:
+        """Generate an MP3 voice response for assistant text."""
+        payload = {"text": text, "language": language, "slow": slow}
+        try:
+            with httpx.Client(timeout=httpx.Timeout(120.0, connect=10.0)) as client:
+                response = client.post(f"{self.base_url}/api/v1/voice/speak", json=payload)
+                response.raise_for_status()
+                return response.content
+        except httpx.HTTPStatusError as exc:
+            raise RuntimeError(self._extract_error(exc.response)) from exc
+        except httpx.RequestError as exc:
+            raise RuntimeError(f"Could not reach the speech API: {exc}") from exc
+
     def clear_conversation(self, report_id: str) -> dict:
         """Clear in-memory chat history for one report."""
         try:

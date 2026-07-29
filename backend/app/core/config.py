@@ -32,6 +32,13 @@ class Settings(BaseSettings):
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     rag_chunk_size: int = 900
     rag_chunk_overlap: int = 140
+    voice_transcription_enabled: bool = True
+    voice_speech_enabled: bool = True
+    voice_whisper_model: str = "small"
+    voice_whisper_device: str = "cpu"
+    voice_whisper_compute_type: str = "int8"
+    voice_beam_size: int = 5
+    voice_max_audio_mb: int = 15
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",

@@ -26,6 +26,7 @@ SESSION_DEFAULTS = {
     "chat_history": [],
     "suggested_questions": [],
     "pending_chat_question": None,
+    "last_voice_signature": None,
 }
 
 for key, default in SESSION_DEFAULTS.items():
@@ -132,7 +133,7 @@ with st.sidebar:
                 st.error(str(exc))
 
     st.markdown("---")
-    st.write("Current phase: **Phase 7 — Intelligent Medical Assistant & Grandma Mode**")
+    st.write("Current phase: **Phase 8 — Multilingual Voice Assistant**")
     if st.button("Clear Session", use_container_width=True):
         st.session_state.clear()
         st.rerun()
@@ -476,6 +477,18 @@ with content_col:
                                 help="Uses very simple, gentle, everyday language.",
                             )
 
+                            voice_col1, voice_col2 = st.columns(2)
+                            voice_input_enabled = voice_col1.toggle(
+                                "Voice Input",
+                                value=True,
+                                help="Record your question and transcribe it locally with Whisper.",
+                            )
+                            voice_reply_enabled = voice_col2.toggle(
+                                "Voice Reply",
+                                value=False,
+                                help="Read the assistant answer aloud in the selected language.",
+                            )
+
                             if not st.session_state.suggested_questions:
                                 try:
                                     suggestions = api_client.get_suggested_questions(report_id)
@@ -503,16 +516,43 @@ with content_col:
                                             f"Mode: {message['mode_used'].replace('_', ' ').title()} · "
                                             f"Style: {message.get('explanation_style', 'standard').title()}"
                                         )
+                                    if message.get("audio"):
+                                        st.audio(message["audio"], format="audio/mp3")
                                     if message.get("sources"):
                                         with st.expander("Report sections used"):
                                             for source in message["sources"]:
                                                 st.caption(source.get("chunk_id", "Report section"))
                                                 st.write(source.get("excerpt", ""))
 
+                            voice_question = None
+                            if voice_input_enabled:
+                                recorded_audio = st.audio_input("Record your question")
+                                if recorded_audio is not None:
+                                    signature = (recorded_audio.name, len(recorded_audio.getvalue()))
+                                    if signature != st.session_state.last_voice_signature:
+                                        with st.spinner("Transcribing your voice locally..."):
+                                            try:
+                                                language_key = {
+                                                    "English": "english",
+                                                    "हिंदी (Hindi)": "hindi",
+                                                    "ਪੰਜਾਬੀ (Punjabi)": "punjabi",
+                                                }[language]
+                                                transcript = api_client.transcribe_audio(
+                                                    filename=recorded_audio.name or "voice.wav",
+                                                    content=recorded_audio.getvalue(),
+                                                    content_type=recorded_audio.type or "audio/wav",
+                                                    language=language_key,
+                                                )
+                                                voice_question = transcript.get("text")
+                                                st.session_state.last_voice_signature = signature
+                                                st.success(f"I heard: {voice_question}")
+                                            except RuntimeError as exc:
+                                                st.error(str(exc))
+
                             typed_question = st.chat_input(
                                 "Ask about your report or a general medical term"
                             )
-                            question = st.session_state.pending_chat_question or typed_question
+                            question = st.session_state.pending_chat_question or voice_question or typed_question
                             if question:
                                 st.session_state.pending_chat_question = None
                                 st.session_state.chat_history.append(
@@ -535,10 +575,22 @@ with content_col:
                                                 "grandma" if grandma_mode else "standard"
                                             ),
                                         )
+                                        answer_text = chat_result.get("answer", "")
+                                        answer_audio = None
+                                        if voice_reply_enabled and answer_text:
+                                            try:
+                                                answer_audio = api_client.synthesize_speech(
+                                                    text=answer_text,
+                                                    language=language_key,
+                                                    slow=grandma_mode,
+                                                )
+                                            except RuntimeError as voice_exc:
+                                                st.warning(f"Text answer is ready, but voice output failed: {voice_exc}")
                                         st.session_state.chat_history.append(
                                             {
                                                 "role": "assistant",
-                                                "content": chat_result.get("answer", ""),
+                                                "content": answer_text,
+                                                "audio": answer_audio,
                                                 "sources": chat_result.get("sources", []),
                                                 "mode_used": chat_result.get("mode_used"),
                                                 "explanation_style": chat_result.get(
@@ -560,6 +612,6 @@ with content_col:
         st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown(
-    "<div class='footer'>MediSimplify AI — Phase 7 Intelligent Medical Assistant</div>",
+    "<div class='footer'>MediSimplify AI — Phase 8 Multilingual Voice Assistant</div>",
     unsafe_allow_html=True,
 )

@@ -8,6 +8,7 @@ from app.api import (
     routes_health,
     routes_providers,
     routes_report_analysis,
+    routes_voice,
 )
 from app.core import constants
 from app.core.error_handlers import register_error_handlers
@@ -41,6 +42,7 @@ app.include_router(routes_providers.router, prefix=constants.API_V1_STR)
 app.include_router(routes_analysis.router, prefix=constants.API_V1_STR)
 app.include_router(routes_report_analysis.router, prefix=constants.API_V1_STR)
 app.include_router(routes_chat.router, prefix=constants.API_V1_STR)
+app.include_router(routes_voice.router, prefix=constants.API_V1_STR)
 
 register_error_handlers(app)
 
