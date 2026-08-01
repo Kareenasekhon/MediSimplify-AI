@@ -1,0 +1,10 @@
+Place your generated files in this folder using these names:
+
+medisimplify_logo.png
+medisimplify_logo_dark.png
+medisimplify_icon.png
+favicon.png
+app_icon_512.png
+
+The frontend automatically uses favicon.png for the browser tab and
+medisimplify_icon.png (with fallbacks) in the sidebar.

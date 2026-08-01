@@ -4,3 +4,9 @@ pydantic>=2.0.0
 
 # Phase 8 requires st.audio_input
 streamlit>=1.40.0
+
+# Phase 9.5 Batch 1 - PDF report export
+reportlab>=4.0.0
+
+# Phase 9.5 Batch 2 - interactive health analytics
+plotly>=5.18.0

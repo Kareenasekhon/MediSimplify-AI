@@ -1,0 +1,773 @@
+/* MediSimplify AI — Phase 9 dashboard design system */
+:root {
+  --ms-primary: #14b8a6;
+  --ms-primary-dark: #0f766e;
+  --ms-accent: #3b82f6;
+  --ms-violet: #7c3aed;
+  --ms-bg: #f7fbfc;
+  --ms-surface: #ffffff;
+  --ms-soft: #ecfdfb;
+  --ms-text: #0f172a;
+  --ms-muted: #64748b;
+  --ms-border: #dbe8ec;
+  --ms-success: #16a34a;
+  --ms-warning: #f59e0b;
+  --ms-danger: #ef4444;
+  --ms-shadow: 0 12px 36px rgba(15, 118, 110, .09);
+}
+
+html, body, [class*="css"] {
+  font-family: Inter, Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.stApp {
+  background:
+    radial-gradient(circle at 92% 3%, rgba(20,184,166,.10), transparent 23rem),
+    linear-gradient(180deg, #fbfefe 0%, var(--ms-bg) 100%);
+  color: var(--ms-text);
+}
+
+[data-testid="stHeader"] { background: transparent; }
+#MainMenu, footer { visibility: hidden; }
+.block-container { max-width: 1480px; padding-top: 1.3rem; padding-bottom: 3rem; }
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+  background: linear-gradient(180deg, #ffffff 0%, #f2fbfa 100%);
+  border-right: 1px solid var(--ms-border);
+}
+[data-testid="stSidebar"] .block-container { padding-top: 1.1rem; }
+.ms-sidebar-brand {
+  display: flex; align-items: center; gap: .75rem; padding: .75rem;
+  border: 1px solid rgba(20,184,166,.18); border-radius: 16px;
+  background: linear-gradient(135deg, rgba(20,184,166,.11), rgba(59,130,246,.05));
+  margin-bottom: 1rem;
+}
+.ms-sidebar-logo { width: 44px; height: 44px; object-fit: contain; border-radius: 12px; }
+.ms-sidebar-name { font-weight: 800; color: var(--ms-text); line-height: 1.1; }
+.ms-sidebar-phase { font-size: .72rem; color: var(--ms-muted); margin-top: .2rem; }
+.ms-sidebar-label { margin: 1.05rem 0 .4rem; font-size: .72rem; font-weight: 800; color: var(--ms-primary-dark); letter-spacing: .09em; text-transform: uppercase; }
+
+/* Hero */
+.ms-hero {
+  position: relative; overflow: hidden; border-radius: 26px; padding: 2.1rem 2.25rem;
+  border: 1px solid rgba(20,184,166,.18); background:
+  radial-gradient(circle at 84% 18%, rgba(255,255,255,.30), transparent 11rem),
+  linear-gradient(135deg, #ffffff 0%, #effcfb 54%, #e7f4ff 100%);
+  box-shadow: var(--ms-shadow); margin-bottom: 1rem;
+}
+.ms-kicker { color: var(--ms-primary-dark); font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.ms-hero h1 { margin: .45rem 0 .7rem; max-width: 720px; color: var(--ms-text); font-size: clamp(2.1rem, 4vw, 3.7rem); line-height: 1.02; letter-spacing: -.045em; }
+.ms-hero h1 span { color: var(--ms-primary); }
+.ms-hero p { max-width: 690px; color: var(--ms-muted); font-size: 1.02rem; line-height: 1.7; margin: 0; }
+.ms-feature-row { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1.1rem; }
+.ms-chip { padding: .4rem .65rem; border: 1px solid rgba(15,118,110,.18); background: rgba(255,255,255,.78); border-radius: 999px; color: var(--ms-primary-dark); font-size: .78rem; font-weight: 700; }
+
+/* Dashboard cards */
+.ms-stat-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: .8rem; margin: .85rem 0 1.2rem; }
+.ms-stat-card { background: rgba(255,255,255,.92); border: 1px solid var(--ms-border); border-radius: 17px; padding: 1rem 1.05rem; box-shadow: 0 7px 20px rgba(15,23,42,.045); }
+.ms-stat-top { display:flex; align-items:center; justify-content:space-between; gap:.6rem; }
+.ms-stat-icon { width: 34px; height: 34px; display:grid; place-items:center; border-radius: 10px; background: var(--ms-soft); }
+.ms-stat-label { color: var(--ms-muted); font-size: .76rem; font-weight: 700; }
+.ms-stat-value { margin-top: .45rem; font-size: 1.35rem; font-weight: 850; color: var(--ms-text); }
+.ms-stat-note { margin-top:.12rem; color:var(--ms-muted); font-size:.72rem; }
+.ms-online { color: var(--ms-success); }
+
+.ms-section-title { font-size: 1.35rem; font-weight: 850; color: var(--ms-text); letter-spacing:-.02em; margin: .35rem 0 .15rem; }
+.ms-section-subtitle { color: var(--ms-muted); font-size: .88rem; margin-bottom:.75rem; }
+
+/* Existing cards and native widgets */
+.glass-card, [data-testid="stVerticalBlockBorderWrapper"] {
+  background: rgba(255,255,255,.94) !important; border: 1px solid var(--ms-border) !important;
+  border-radius: 18px !important; box-shadow: 0 8px 26px rgba(15,23,42,.05);
+}
+.glass-card { padding: 1.25rem; margin-bottom: 1rem; }
+.status-badge { display:inline-flex; align-items:center; padding:.32rem .66rem; border-radius:999px; font-size:.74rem; font-weight:800; letter-spacing:.04em; }
+.status-online { background:rgba(22,163,74,.10); color:var(--ms-success); border:1px solid rgba(22,163,74,.22); }
+.status-offline { background:rgba(239,68,68,.09); color:var(--ms-danger); border:1px solid rgba(239,68,68,.22); }
+
+.stButton > button, .stDownloadButton > button {
+  min-height: 2.65rem; border-radius: 11px; font-weight: 750; transition: .18s ease;
+}
+.stButton > button[kind="primary"], .stDownloadButton > button {
+  border-color: var(--ms-primary-dark); background: linear-gradient(135deg,var(--ms-primary-dark),var(--ms-primary)); color:white;
+}
+.stButton > button:hover, .stDownloadButton > button:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(15,118,110,.18); }
+[data-testid="stFileUploaderDropzone"] { border: 1.5px dashed rgba(20,184,166,.45) !important; border-radius: 15px !important; background: #f0fdfa !important; }
+[data-testid="stChatMessage"] { border:1px solid var(--ms-border); border-radius:16px; background:rgba(255,255,255,.94); box-shadow:0 5px 16px rgba(15,23,42,.04); margin-bottom:.6rem; }
+[data-testid="stAlert"] { border-radius: 13px; }
+
+.ms-footer { margin-top:2.3rem; padding:1.2rem 0; border-top:1px solid var(--ms-border); text-align:center; color:var(--ms-muted); font-size:.78rem; line-height:1.65; }
+.footer { text-align:center; color:var(--ms-muted); font-size:.8rem; margin-top:3rem; border-top:1px solid var(--ms-border); padding-top:1rem; }
+
+@media (prefers-color-scheme: dark) {
+  :root { --ms-bg:#07111f; --ms-surface:#0c1a2e; --ms-soft:#0d2c32; --ms-text:#f8fafc; --ms-muted:#94a3b8; --ms-border:#20334d; --ms-shadow:0 15px 38px rgba(0,0,0,.28); }
+  .stApp { background: radial-gradient(circle at 90% 2%, rgba(124,58,237,.12), transparent 25rem), linear-gradient(180deg,#07111f 0%,#081426 100%); }
+  [data-testid="stSidebar"] { background:linear-gradient(180deg,#071425 0%,#09182a 100%); }
+  .ms-sidebar-brand { background:linear-gradient(135deg,rgba(20,184,166,.11),rgba(124,58,237,.09)); }
+  .ms-hero { background:radial-gradient(circle at 83% 20%,rgba(124,58,237,.13),transparent 14rem),linear-gradient(135deg,#0b1a2e 0%,#0b2031 60%,#0e1d39 100%); }
+  .ms-chip, .ms-stat-card, .glass-card, [data-testid="stVerticalBlockBorderWrapper"], [data-testid="stChatMessage"] { background:rgba(12,26,46,.94) !important; }
+  [data-testid="stFileUploaderDropzone"] { background:#0b2630 !important; }
+}
+
+@media (max-width: 900px) { .ms-stat-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .ms-hero { padding:1.5rem; } }
+@media (max-width: 560px) { .block-container{padding: .8rem;} .ms-stat-grid{grid-template-columns:1fr;} .ms-hero h1{font-size:2rem;} }
+
+/* Phase 9.2 — Upload and OCR Review */
+.ms-upload-workspace { overflow: hidden; }
+.ms-upload-header { display:flex; gap:1rem; align-items:flex-start; margin-bottom:.8rem; }
+.ms-upload-header h2, .ms-review-heading h2 { margin:.28rem 0 .35rem; color:var(--ms-text); font-size:1.48rem; letter-spacing:-.025em; }
+.ms-upload-header p, .ms-review-heading p { margin:0; color:var(--ms-muted); line-height:1.55; font-size:.88rem; }
+.ms-upload-icon { flex:0 0 48px; width:48px; height:48px; display:grid; place-items:center; border-radius:14px; color:white; font-size:1.45rem; font-weight:900; background:linear-gradient(135deg,var(--ms-primary-dark),var(--ms-primary)); box-shadow:0 8px 20px rgba(20,184,166,.24); }
+.ms-step-pill { display:inline-flex; padding:.28rem .55rem; border-radius:999px; background:rgba(20,184,166,.10); border:1px solid rgba(20,184,166,.22); color:var(--ms-primary-dark); font-size:.68rem; font-weight:850; letter-spacing:.08em; }
+.ms-format-row { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; margin:.75rem 0 1rem; }
+.ms-format-row span { padding:.28rem .5rem; border-radius:7px; background:var(--ms-soft); border:1px solid var(--ms-border); color:var(--ms-primary-dark); font-size:.68rem; font-weight:800; }
+.ms-format-row small { margin-left:auto; color:var(--ms-muted); }
+.ms-selected-file { display:flex; align-items:center; gap:.8rem; padding:.8rem .9rem; margin:.75rem 0; border:1px solid rgba(20,184,166,.22); border-radius:14px; background:linear-gradient(135deg,rgba(20,184,166,.07),rgba(59,130,246,.04)); }
+.ms-file-icon { width:40px; height:40px; display:grid; place-items:center; border-radius:10px; background:var(--ms-surface); border:1px solid var(--ms-border); }
+.ms-file-copy { min-width:0; flex:1; display:flex; flex-direction:column; }
+.ms-file-copy strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ms-text); font-size:.86rem; }
+.ms-file-copy span { color:var(--ms-muted); font-size:.7rem; margin-top:.12rem; }
+.ms-file-ready { color:var(--ms-success); font-size:.66rem; font-weight:900; letter-spacing:.08em; }
+.ms-review-heading { margin:.2rem 0 1rem; }
+.ms-review-column-title { color:var(--ms-text); font-weight:850; font-size:.9rem; margin:0 0 .45rem .1rem; }
+.ms-pdf-preview { width:100%; height:430px; border:0; border-radius:10px; background:#eef2f7; }
+.ms-document-placeholder { min-height:380px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.5rem; text-align:center; color:var(--ms-muted); }
+.ms-document-placeholder strong { color:var(--ms-text); }
+.ms-document-icon { font-size:3rem; }
+[data-testid="stFileUploaderDropzone"] { min-height:150px; display:flex; align-items:center; justify-content:center; transition:.18s ease; }
+[data-testid="stFileUploaderDropzone"]:hover { border-color:var(--ms-primary) !important; box-shadow:0 10px 24px rgba(20,184,166,.10); transform:translateY(-1px); }
+[data-testid="stTextArea"] textarea { border-radius:13px !important; border-color:var(--ms-border) !important; line-height:1.55; }
+@media (prefers-color-scheme: dark) {
+  .ms-step-pill { color:#5eead4; background:rgba(20,184,166,.10); }
+  .ms-selected-file { background:linear-gradient(135deg,rgba(20,184,166,.09),rgba(124,58,237,.07)); }
+  .ms-pdf-preview { background:#07111f; }
+}
+@media (max-width:700px) { .ms-format-row small{width:100%;margin-left:0}.ms-upload-header{align-items:center}.ms-pdf-preview{height:340px} }
+
+/* =========================================================
+   Phase 9.3 — Report Analysis Dashboard (Batch 1)
+   ========================================================= */
+.ms-analysis-shell {
+  margin-top: 1rem;
+}
+
+.ms-analysis-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.35rem;
+  margin-bottom: .9rem;
+  border: 1px solid var(--ms-border);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 92% 12%, rgba(20,184,166,.12), transparent 9rem),
+    linear-gradient(135deg, rgba(255,255,255,.98), rgba(240,253,250,.90));
+  box-shadow: 0 10px 28px rgba(15,23,42,.055);
+}
+
+.ms-analysis-title-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: .9rem;
+  min-width: 0;
+}
+
+.ms-analysis-icon {
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  background: linear-gradient(135deg, var(--ms-primary-dark), var(--ms-primary));
+  color: #fff;
+  font-size: 1.35rem;
+  box-shadow: 0 9px 22px rgba(20,184,166,.22);
+}
+
+.ms-analysis-eyebrow {
+  margin-bottom: .2rem;
+  color: var(--ms-primary-dark);
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.ms-analysis-title {
+  margin: 0;
+  color: var(--ms-text);
+  font-size: 1.45rem;
+  font-weight: 850;
+  line-height: 1.18;
+  letter-spacing: -.025em;
+}
+
+.ms-analysis-meta {
+  margin-top: .35rem;
+  color: var(--ms-muted);
+  font-size: .76rem;
+  line-height: 1.5;
+}
+
+.ms-analysis-complete {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: .38rem;
+  padding: .4rem .7rem;
+  border: 1px solid rgba(22,163,74,.22);
+  border-radius: 999px;
+  background: rgba(22,163,74,.09);
+  color: var(--ms-success);
+  font-size: .69rem;
+  font-weight: 900;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+
+.ms-summary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  gap: .9rem;
+  margin-bottom: 1rem;
+}
+
+.ms-summary-card,
+.ms-score-card {
+  border: 1px solid var(--ms-border);
+  border-radius: 19px;
+  background: rgba(255,255,255,.95);
+  box-shadow: 0 8px 24px rgba(15,23,42,.045);
+}
+
+.ms-summary-card {
+  padding: 1.25rem 1.35rem;
+}
+
+.ms-card-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: .38rem;
+  color: var(--ms-primary-dark);
+  font-size: .7rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.ms-summary-copy {
+  margin: .65rem 0 0;
+  color: var(--ms-text);
+  font-size: 1rem;
+  line-height: 1.72;
+}
+
+.ms-summary-empty {
+  color: var(--ms-muted);
+  font-style: italic;
+}
+
+.ms-score-card {
+  padding: 1.05rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.ms-score-label {
+  color: var(--ms-muted);
+  font-size: .72rem;
+  font-weight: 800;
+}
+
+.ms-score-value {
+  margin: .25rem 0 .4rem;
+  color: var(--ms-text);
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.ms-score-track {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148,163,184,.22);
+}
+
+.ms-score-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--ms-primary-dark), var(--ms-primary));
+}
+
+.ms-score-note {
+  margin-top: .55rem;
+  color: var(--ms-muted);
+  font-size: .68rem;
+  line-height: 1.45;
+}
+
+.ms-findings-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin: 1.1rem 0 .65rem;
+}
+
+.ms-findings-heading h3 {
+  margin: 0;
+  color: var(--ms-text);
+  font-size: 1.07rem;
+  font-weight: 850;
+  letter-spacing: -.015em;
+}
+
+.ms-findings-count {
+  color: var(--ms-muted);
+  font-size: .72rem;
+  font-weight: 750;
+}
+
+.ms-parameter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .75rem;
+  margin-bottom: .9rem;
+}
+
+.ms-parameter-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 168px;
+  padding: 1rem;
+  border: 1px solid var(--ms-border);
+  border-radius: 17px;
+  background: rgba(255,255,255,.96);
+  box-shadow: 0 7px 20px rgba(15,23,42,.04);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.ms-parameter-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--parameter-accent, var(--ms-primary));
+}
+
+.ms-parameter-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 13px 28px rgba(15,23,42,.08);
+  border-color: color-mix(in srgb, var(--parameter-accent, var(--ms-primary)) 42%, var(--ms-border));
+}
+
+.ms-parameter-card.status-normal { --parameter-accent: #16a34a; }
+.ms-parameter-card.status-low { --parameter-accent: #f59e0b; }
+.ms-parameter-card.status-high { --parameter-accent: #ef4444; }
+.ms-parameter-card.status-critical { --parameter-accent: #dc2626; }
+.ms-parameter-card.status-attention { --parameter-accent: #f97316; }
+.ms-parameter-card.status-unknown { --parameter-accent: #64748b; }
+
+.ms-parameter-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .6rem;
+}
+
+.ms-parameter-name {
+  color: var(--ms-text);
+  font-size: .9rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.ms-parameter-status {
+  flex: 0 0 auto;
+  padding: .26rem .48rem;
+  border-radius: 999px;
+  font-size: .61rem;
+  font-weight: 900;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+
+.ms-parameter-status.status-normal { color:#15803d; background:rgba(22,163,74,.10); border:1px solid rgba(22,163,74,.20); }
+.ms-parameter-status.status-low { color:#b45309; background:rgba(245,158,11,.11); border:1px solid rgba(245,158,11,.22); }
+.ms-parameter-status.status-high,
+.ms-parameter-status.status-critical { color:#b91c1c; background:rgba(239,68,68,.10); border:1px solid rgba(239,68,68,.22); }
+.ms-parameter-status.status-attention { color:#c2410c; background:rgba(249,115,22,.10); border:1px solid rgba(249,115,22,.22); }
+.ms-parameter-status.status-unknown { color:#475569; background:rgba(100,116,139,.10); border:1px solid rgba(100,116,139,.20); }
+
+.ms-parameter-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: .35rem;
+  margin: .72rem 0 .2rem;
+}
+
+.ms-parameter-value {
+  color: var(--ms-text);
+  font-size: 1.55rem;
+  font-weight: 900;
+  line-height: 1;
+  word-break: break-word;
+}
+
+.ms-parameter-unit {
+  color: var(--ms-muted);
+  font-size: .72rem;
+  font-weight: 700;
+}
+
+.ms-parameter-reference {
+  color: var(--ms-muted);
+  font-size: .69rem;
+  line-height: 1.4;
+}
+
+.ms-parameter-explanation {
+  margin-top: .65rem;
+  padding-top: .6rem;
+  border-top: 1px solid var(--ms-border);
+  color: var(--ms-muted);
+  font-size: .72rem;
+  line-height: 1.5;
+}
+
+.ms-analysis-note {
+  margin-top: .75rem;
+  padding: .8rem .9rem;
+  border-left: 4px solid var(--ms-primary);
+  border-radius: 10px;
+  background: rgba(20,184,166,.07);
+  color: var(--ms-muted);
+  font-size: .74rem;
+  line-height: 1.55;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ms-analysis-header {
+    background:
+      radial-gradient(circle at 92% 12%, rgba(124,58,237,.13), transparent 10rem),
+      linear-gradient(135deg, rgba(12,26,46,.98), rgba(10,34,47,.94));
+  }
+
+  .ms-summary-card,
+  .ms-score-card,
+  .ms-parameter-card {
+    background: rgba(12,26,46,.96);
+  }
+
+  .ms-analysis-complete { color:#4ade80; }
+  .ms-parameter-status.status-normal { color:#4ade80; }
+  .ms-parameter-status.status-low { color:#fbbf24; }
+  .ms-parameter-status.status-high,
+  .ms-parameter-status.status-critical { color:#f87171; }
+  .ms-parameter-status.status-attention { color:#fb923c; }
+  .ms-parameter-status.status-unknown { color:#cbd5e1; }
+}
+
+@media (max-width: 1050px) {
+  .ms-parameter-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+
+@media (max-width: 760px) {
+  .ms-analysis-header { flex-direction: column; }
+  .ms-summary-grid { grid-template-columns: 1fr; }
+  .ms-parameter-grid { grid-template-columns: 1fr; }
+  .ms-analysis-title-wrap { align-items: center; }
+}
+
+/* =========================================================
+   Phase 9.3 — Report Analysis Dashboard (Batch 2)
+   ========================================================= */
+.ms-recommendation-heading,
+.ms-report-actions-header {
+  display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  margin:1.15rem 0 .65rem;
+}
+.ms-recommendation-heading h3,
+.ms-doctor-header h3,
+.ms-report-actions-header h3 {
+  margin:.18rem 0 0; color:var(--ms-text); font-size:1.08rem;
+  font-weight:850; letter-spacing:-.015em;
+}
+.ms-recommendation-kicker,
+.ms-doctor-kicker,
+.ms-report-actions-kicker {
+  color:var(--ms-primary-dark); font-size:.67rem; font-weight:900;
+  letter-spacing:.09em; text-transform:uppercase;
+}
+.ms-recommendation-count {
+  min-width:31px; height:31px; display:grid; place-items:center; border-radius:999px;
+  background:var(--ms-soft); border:1px solid var(--ms-border);
+  color:var(--ms-primary-dark); font-size:.72rem; font-weight:900;
+}
+.ms-recommendation-card {
+  display:flex; gap:.8rem; align-items:flex-start; padding:.85rem .95rem; margin-bottom:.55rem;
+  border:1px solid var(--ms-border); border-radius:14px; background:rgba(255,255,255,.95);
+  box-shadow:0 5px 16px rgba(15,23,42,.035);
+}
+.ms-recommendation-card.type-warning { border-left:4px solid var(--ms-warning); }
+.ms-recommendation-card.type-info { border-left:4px solid var(--ms-accent); }
+.ms-recommendation-card.type-success { border-left:4px solid var(--ms-success); }
+.ms-recommendation-card.type-danger { border-left:4px solid var(--ms-danger); }
+.ms-recommendation-icon {
+  flex:0 0 36px; width:36px; height:36px; display:grid; place-items:center;
+  border-radius:10px; background:var(--ms-soft);
+}
+.ms-recommendation-copy { display:flex; gap:.65rem; min-width:0; }
+.ms-recommendation-number { color:var(--ms-muted); font-size:.66rem; font-weight:900; padding-top:.18rem; }
+.ms-recommendation-copy p { margin:0; color:var(--ms-text); font-size:.82rem; line-height:1.58; }
+.ms-doctor-header {
+  display:flex; align-items:flex-start; gap:.85rem; margin:1.2rem 0 .7rem;
+  padding:1rem 1.05rem; border:1px solid rgba(124,58,237,.18); border-radius:17px;
+  background:linear-gradient(135deg,rgba(124,58,237,.06),rgba(59,130,246,.04));
+}
+.ms-doctor-header p,
+.ms-report-actions-header p { margin:.3rem 0 0; color:var(--ms-muted); font-size:.76rem; line-height:1.5; }
+.ms-doctor-icon {
+  flex:0 0 44px; width:44px; height:44px; display:grid; place-items:center;
+  border-radius:13px; background:rgba(124,58,237,.10); font-size:1.25rem;
+}
+.ms-doctor-question {
+  display:flex; align-items:flex-start; gap:.75rem; padding:.78rem .9rem; margin-bottom:.5rem;
+  border:1px solid var(--ms-border); border-radius:13px; background:rgba(255,255,255,.95);
+}
+.ms-doctor-number {
+  flex:0 0 28px; width:28px; height:28px; display:grid; place-items:center; border-radius:9px;
+  background:rgba(124,58,237,.09); color:var(--ms-violet); font-size:.72rem; font-weight:900;
+}
+.ms-doctor-question p { margin:.18rem 0 0; color:var(--ms-text); font-size:.82rem; line-height:1.55; }
+.ms-disclaimer-card {
+  margin:1rem 0; padding:.85rem .95rem; border:1px solid rgba(245,158,11,.22);
+  border-left:4px solid var(--ms-warning); border-radius:12px; background:rgba(245,158,11,.07);
+  color:var(--ms-text); font-size:.76rem; line-height:1.55;
+}
+.ms-report-actions-header {
+  padding:1rem 1.05rem; border:1px solid var(--ms-border); border-radius:16px;
+  background:linear-gradient(135deg,rgba(20,184,166,.065),rgba(59,130,246,.035));
+}
+.ms-action-link {
+  min-height:2.65rem; display:flex; align-items:center; justify-content:center;
+  padding:.45rem .75rem; border:1px solid var(--ms-primary-dark); border-radius:11px;
+  background:linear-gradient(135deg,var(--ms-primary-dark),var(--ms-primary));
+  color:#fff !important; font-weight:750; text-decoration:none !important;
+  transition:.18s ease;
+}
+.ms-action-link:hover { transform:translateY(-1px); box-shadow:0 8px 20px rgba(15,118,110,.18); }
+@media (prefers-color-scheme: dark) {
+  .ms-recommendation-card,
+  .ms-doctor-question { background:rgba(12,26,46,.96); }
+  .ms-doctor-header { background:linear-gradient(135deg,rgba(124,58,237,.10),rgba(20,184,166,.05)); }
+}
+
+/* =========================================================
+   Phase 9.4 — Intelligent Medical Assistant
+   ========================================================= */
+.ms-assistant-header {
+  display:flex; align-items:center; gap:1rem; position:relative; margin:1.35rem 0 .65rem;
+  padding:1.2rem 1.25rem; border:1px solid rgba(20,184,166,.2); border-radius:20px;
+  background:radial-gradient(circle at 95% 0,rgba(124,58,237,.12),transparent 13rem),
+             linear-gradient(135deg,rgba(20,184,166,.09),rgba(59,130,246,.045));
+  box-shadow:0 12px 30px rgba(15,23,42,.055);
+}
+.ms-assistant-avatar { flex:0 0 52px; width:52px; height:52px; display:grid; place-items:center;
+  border-radius:16px; color:#fff; font-size:1.5rem; background:linear-gradient(135deg,var(--ms-primary-dark),var(--ms-violet));
+  box-shadow:0 9px 20px rgba(15,118,110,.2); }
+.ms-assistant-heading-copy { min-width:0; flex:1; }
+.ms-assistant-kicker { color:var(--ms-primary-dark); font-size:.65rem; font-weight:900; letter-spacing:.1em; }
+.ms-assistant-heading-copy h2 { margin:.18rem 0 .22rem; color:var(--ms-text); font-size:1.45rem; letter-spacing:-.025em; }
+.ms-assistant-heading-copy p { margin:0; color:var(--ms-muted); font-size:.8rem; }
+.ms-assistant-status { flex:0 0 auto; padding:.42rem .65rem; border-radius:999px; font-size:.68rem; font-weight:850; }
+.ms-assistant-status.is-ready { color:#15803d; background:rgba(22,163,74,.1); border:1px solid rgba(22,163,74,.2); }
+.ms-assistant-status.is-pending { color:#b45309; background:rgba(245,158,11,.1); border:1px solid rgba(245,158,11,.22); }
+.ms-assistant-badges { display:flex; flex-wrap:wrap; gap:.45rem; margin:0 0 1rem; }
+.ms-assistant-badge { display:inline-flex; align-items:center; gap:.36rem; padding:.36rem .58rem; border:1px solid var(--ms-border);
+  border-radius:999px; background:rgba(255,255,255,.82); color:var(--ms-muted); font-size:.68rem; font-weight:750; }
+.ms-assistant-section-label { margin:1rem 0 .48rem; color:var(--ms-text); font-size:.76rem; font-weight:900; letter-spacing:.02em; }
+.ms-kb-card { display:flex; gap:.9rem; align-items:flex-start; padding:1rem 1.05rem; border:1px solid var(--ms-border);
+  border-radius:17px; background:rgba(255,255,255,.94); box-shadow:0 7px 20px rgba(15,23,42,.035); }
+.ms-kb-card.ready { border-left:4px solid var(--ms-success); }
+.ms-kb-card.pending { border-left:4px solid var(--ms-warning); }
+.ms-kb-icon { flex:0 0 43px; width:43px; height:43px; display:grid; place-items:center; border-radius:13px; background:var(--ms-soft); font-size:1.2rem; }
+.ms-kb-copy { min-width:0; flex:1; }
+.ms-kb-topline { display:flex; justify-content:space-between; gap:1rem; color:var(--ms-text); font-size:.86rem; }
+.ms-kb-topline span { color:var(--ms-primary-dark); font-size:.69rem; font-weight:850; }
+.ms-kb-copy p { margin:.28rem 0 .62rem; color:var(--ms-muted); font-size:.73rem; }
+.ms-kb-meta { display:flex; flex-wrap:wrap; gap:.45rem; }
+.ms-kb-meta span { padding:.3rem .5rem; border-radius:9px; background:var(--ms-soft); color:var(--ms-muted); font-size:.64rem; }
+.ms-kb-meta b { color:var(--ms-text); }
+.ms-chat-empty { text-align:center; padding:1.5rem 1rem; margin-bottom:.7rem; border:1px dashed var(--ms-border); border-radius:16px; background:rgba(20,184,166,.025); }
+.ms-chat-empty-icon { font-size:1.6rem; margin-bottom:.35rem; }
+.ms-chat-empty strong { display:block; color:var(--ms-text); font-size:.84rem; }
+.ms-chat-empty p { margin:.25rem 0 0; color:var(--ms-muted); font-size:.72rem; }
+[data-testid="stChatMessage"] { border:1px solid var(--ms-border); border-radius:16px; padding:.25rem .45rem; margin-bottom:.55rem; background:rgba(255,255,255,.72); }
+[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) { background:rgba(20,184,166,.055); }
+@media (prefers-color-scheme: dark) {
+  .ms-assistant-badge,.ms-kb-card,[data-testid="stChatMessage"] { background:rgba(12,26,46,.94); }
+  .ms-assistant-status.is-ready { color:#4ade80; }
+  .ms-assistant-status.is-pending { color:#fbbf24; }
+}
+@media (max-width:760px) {
+  .ms-assistant-header { align-items:flex-start; flex-wrap:wrap; }
+  .ms-assistant-status { margin-left:68px; }
+  .ms-kb-topline { flex-direction:column; gap:.25rem; }
+}
+
+/* =========================================================
+   Phase 9.5 Batch 1 - Professional PDF Report Export
+   ========================================================= */
+.ms-export-card {
+  display:flex; align-items:flex-start; gap:1rem; margin:1rem 0 .65rem;
+  padding:1.1rem 1.15rem; border:1px solid rgba(37,99,235,.18); border-radius:18px;
+  background:radial-gradient(circle at 95% 0,rgba(37,99,235,.11),transparent 12rem),
+             linear-gradient(135deg,rgba(255,255,255,.98),rgba(232,247,245,.78));
+  box-shadow:0 10px 28px rgba(15,23,42,.05);
+}
+.ms-export-icon {
+  flex:0 0 52px; width:52px; height:52px; display:grid; place-items:center;
+  border-radius:15px; background:linear-gradient(135deg,#dc2626,#ef4444); color:#fff;
+  font-size:.7rem; font-weight:950; letter-spacing:.08em;
+  box-shadow:0 9px 20px rgba(220,38,38,.18);
+}
+.ms-export-copy { min-width:0; flex:1; }
+.ms-export-kicker {
+  color:var(--ms-primary-dark); font-size:.65rem; font-weight:900;
+  letter-spacing:.1em; text-transform:uppercase;
+}
+.ms-export-copy h3 { margin:.22rem 0 .3rem; color:var(--ms-text); font-size:1.05rem; }
+.ms-export-copy p { margin:0; color:var(--ms-muted); font-size:.77rem; line-height:1.55; }
+.ms-export-meta { display:flex; flex-wrap:wrap; gap:.45rem; margin-top:.75rem; }
+.ms-export-meta span {
+  padding:.32rem .52rem; border:1px solid var(--ms-border); border-radius:9px;
+  background:rgba(255,255,255,.72); color:var(--ms-muted); font-size:.64rem;
+}
+.ms-export-meta b { color:var(--ms-text); }
+@media (prefers-color-scheme: dark) {
+  .ms-export-card { background:linear-gradient(135deg,rgba(12,26,46,.96),rgba(14,40,49,.9)); }
+  .ms-export-meta span { background:rgba(12,26,46,.76); }
+}
+@media (max-width:760px) {
+  .ms-export-card { flex-direction:column; }
+  .ms-export-meta { flex-direction:column; }
+}
+
+/* =========================================================
+   Phase 9.5 Batch 2 — Health Analytics Dashboard
+   ========================================================= */
+.ms-analytics-heading {
+  display:flex; align-items:flex-start; justify-content:space-between; gap:1rem;
+  margin:1.2rem 0 .75rem; padding:1rem 1.1rem;
+  border:1px solid var(--ms-border); border-radius:18px;
+  background:linear-gradient(135deg,rgba(20,184,166,.08),rgba(59,130,246,.05));
+}
+.ms-analytics-heading span { color:var(--ms-primary-dark); font-size:.66rem; font-weight:900; letter-spacing:.09em; }
+.ms-analytics-heading h3 { margin:.25rem 0 .18rem; color:var(--ms-text); font-size:1.2rem; letter-spacing:-.02em; }
+.ms-analytics-heading p { margin:0; color:var(--ms-muted); font-size:.78rem; line-height:1.5; }
+.ms-analytics-badge { flex:0 0 auto; padding:.34rem .6rem; border-radius:999px; background:rgba(124,58,237,.09); border:1px solid rgba(124,58,237,.18); color:var(--ms-violet); font-size:.66rem; font-weight:850; }
+.ms-analytics-metric-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.7rem; margin:.75rem 0 .9rem; }
+.ms-analytics-metric { padding:.9rem; border:1px solid var(--ms-border); border-radius:15px; background:rgba(255,255,255,.95); box-shadow:0 6px 18px rgba(15,23,42,.04); }
+.ms-analytics-metric span { display:block; color:var(--ms-muted); font-size:.68rem; font-weight:800; text-transform:uppercase; letter-spacing:.055em; }
+.ms-analytics-metric strong { display:block; margin:.28rem 0 .18rem; color:var(--ms-text); font-size:1.5rem; line-height:1; }
+.ms-analytics-metric small { color:var(--ms-muted); font-size:.66rem; line-height:1.35; }
+.ms-analytics-metric.metric-normal { border-top:3px solid #16a34a; }
+.ms-analytics-metric.metric-attention { border-top:3px solid #f97316; }
+.ms-analytics-metric.metric-score { border-top:3px solid var(--ms-primary); }
+.ms-attention-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.65rem; margin:.55rem 0 .9rem; }
+.ms-attention-card { position:relative; overflow:hidden; display:flex; flex-direction:column; gap:.2rem; padding:.8rem .85rem .8rem 1rem; border:1px solid var(--ms-border); border-radius:14px; background:rgba(255,255,255,.95); }
+.ms-attention-card::before { content:""; position:absolute; inset:0 auto 0 0; width:4px; background:#f97316; }
+.ms-attention-card.status-low::before { background:#f59e0b; }
+.ms-attention-card.status-high::before, .ms-attention-card.status-critical::before { background:#ef4444; }
+.ms-attention-card span { color:var(--ms-muted); font-size:.69rem; font-weight:750; }
+.ms-attention-card strong { color:var(--ms-text); font-size:.98rem; }
+.ms-attention-card small { color:#c2410c; font-size:.64rem; font-weight:850; text-transform:uppercase; letter-spacing:.055em; }
+.ms-analytics-empty { padding:.9rem 1rem; border:1px solid rgba(22,163,74,.20); border-radius:13px; background:rgba(22,163,74,.07); color:var(--ms-success); font-size:.78rem; }
+.ms-analytics-disclaimer { margin:.8rem 0 1rem; padding:.75rem .9rem; border-left:4px solid #64748b; border-radius:10px; background:rgba(100,116,139,.07); color:var(--ms-muted); font-size:.7rem; line-height:1.55; }
+@media (prefers-color-scheme: dark) {
+  .ms-analytics-heading { background:linear-gradient(135deg,rgba(20,184,166,.09),rgba(124,58,237,.08)); }
+  .ms-analytics-metric, .ms-attention-card { background:rgba(12,26,46,.96); }
+  .ms-analytics-badge { color:#c4b5fd; }
+}
+@media (max-width:1050px) { .ms-analytics-metric-grid,.ms-attention-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:620px) { .ms-analytics-heading { flex-direction:column; } .ms-analytics-metric-grid,.ms-attention-grid { grid-template-columns:1fr; } }
+
+
+/* =========================================================
+   Phase 9.5 Batch 3 — Local Report History
+   ========================================================= */
+.ms-history-empty {
+  min-height: 180px; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:.45rem; padding:1.4rem; text-align:center;
+  border:1px dashed var(--ms-border); border-radius:18px;
+  background:linear-gradient(135deg,rgba(20,184,166,.05),rgba(59,130,246,.035));
+  color:var(--ms-muted);
+}
+.ms-history-empty strong { color:var(--ms-text); font-size:1rem; }
+.ms-history-empty span { font-size:.78rem; }
+.ms-history-empty-icon { font-size:2.25rem; }
+.ms-history-card {
+  display:flex; align-items:flex-start; gap:.8rem; margin:1rem 0 .45rem; padding:1rem;
+  border:1px solid var(--ms-border); border-radius:17px; background:rgba(255,255,255,.95);
+  box-shadow:0 7px 20px rgba(15,23,42,.04); transition:transform .18s ease,box-shadow .18s ease;
+}
+.ms-history-card:hover { transform:translateY(-1px); box-shadow:0 12px 28px rgba(15,23,42,.075); }
+.ms-history-file-icon {
+  flex:0 0 42px; width:42px; height:42px; display:grid; place-items:center;
+  border-radius:12px; background:var(--ms-soft); border:1px solid var(--ms-border); font-size:1.15rem;
+}
+.ms-history-card-copy { min-width:0; flex:1; }
+.ms-history-card-title { color:var(--ms-text); font-size:.9rem; font-weight:850; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ms-history-card-meta { margin-top:.18rem; color:var(--ms-primary-dark); font-size:.68rem; font-weight:750; }
+.ms-history-card-summary { margin-top:.45rem; color:var(--ms-muted); font-size:.74rem; line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.ms-history-preview-anchor { scroll-margin-top:1rem; }
+@media (prefers-color-scheme: dark) {
+  .ms-history-card { background:rgba(12,26,46,.96); }
+  .ms-history-empty { background:linear-gradient(135deg,rgba(20,184,166,.07),rgba(124,58,237,.06)); }
+}
+@media (max-width:700px) {
+  .ms-history-card { padding:.8rem; }
+  .ms-history-card-meta { line-height:1.5; }
+}
+
+/* =========================================================
+   Phase 9.5 Batch 4 — Final UX Polish
+   ========================================================= */
+:root { --ms-transition: 180ms cubic-bezier(.2,.8,.2,1); }
+html { scroll-behavior:smooth; }
+.stButton > button, .stDownloadButton > button, [data-baseweb="select"] > div,
+[data-testid="stFileUploaderDropzone"], [data-testid="stChatMessage"] {
+  transition: transform var(--ms-transition), box-shadow var(--ms-transition), border-color var(--ms-transition), background var(--ms-transition);
+}
+.stButton > button:focus-visible, .stDownloadButton > button:focus-visible {
+  outline:3px solid rgba(20,184,166,.28); outline-offset:2px;
+}
+.ms-process-steps { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.55rem; margin:.65rem 0 1rem; }
+.ms-process-step { display:flex; align-items:center; gap:.5rem; min-height:48px; padding:.58rem .65rem; border:1px solid var(--ms-border); border-radius:12px; background:var(--ms-surface); color:var(--ms-muted); font-size:.69rem; }
+.ms-process-step b { flex:0 0 25px; width:25px; height:25px; display:grid; place-items:center; border-radius:50%; background:rgba(148,163,184,.16); color:var(--ms-muted); }
+.ms-process-step.active { border-color:rgba(20,184,166,.36); background:rgba(20,184,166,.07); color:var(--ms-text); box-shadow:0 7px 18px rgba(20,184,166,.08); }
+.ms-process-step.active b { background:linear-gradient(135deg,var(--ms-primary-dark),var(--ms-primary)); color:#fff; }
+.ms-process-step.done b { background:rgba(22,163,74,.13); color:var(--ms-success); }
+.ms-empty-state { min-height:180px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.42rem; padding:1.5rem; text-align:center; border:1px dashed var(--ms-border); border-radius:18px; background:linear-gradient(135deg,rgba(20,184,166,.045),rgba(59,130,246,.03)); }
+.ms-empty-state strong { color:var(--ms-text); font-size:1rem; }
+.ms-empty-state span { max-width:520px; color:var(--ms-muted); font-size:.78rem; line-height:1.55; }
+.ms-empty-icon { width:48px; height:48px; display:grid; place-items:center; border-radius:15px; background:var(--ms-soft); font-size:1.45rem; }
+.ms-error-state { display:flex; gap:.8rem; align-items:flex-start; padding:.9rem 1rem; border:1px solid rgba(239,68,68,.22); border-radius:14px; background:rgba(239,68,68,.07); }
+.ms-error-icon { flex:0 0 34px; width:34px; height:34px; display:grid; place-items:center; border-radius:10px; background:rgba(239,68,68,.14); color:var(--ms-danger); font-weight:950; }
+.ms-error-state strong { color:var(--ms-text); }
+.ms-error-state p { margin:.18rem 0; color:var(--ms-muted); font-size:.76rem; line-height:1.5; }
+.ms-error-state small { color:var(--ms-danger); font-size:.68rem; }
+[data-testid="stStatusWidget"] { border-radius:16px; overflow:hidden; }
+[data-testid="stToast"] { border:1px solid var(--ms-border); border-radius:14px; box-shadow:var(--ms-shadow); }
+@keyframes msFadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+.ms-analysis-header,.ms-summary-card,.ms-score-card,.ms-analytics-heading,.ms-export-card,.ms-history-card { animation:msFadeUp .28s ease both; }
+@media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation-duration:.01ms !important; transition-duration:.01ms !important; scroll-behavior:auto !important; } }
+@media (prefers-color-scheme: dark) { .ms-process-step,.ms-empty-state { background:rgba(12,26,46,.94); } }
+@media (max-width:760px) { .ms-process-steps { grid-template-columns:1fr 1fr; } }
+@media (max-width:480px) { .ms-process-steps { grid-template-columns:1fr; } }

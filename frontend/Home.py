@@ -1,16 +1,39 @@
-import streamlit as st
+from pathlib import Path
 
+import streamlit as st
 from components.extraction_review_component import render_extraction_review
+from components.report_summary import render_report_summary
+from components.parameter_cards import render_status_sections
+from components.recommendation_cards import render_recommendation_cards
+from components.doctor_questions import render_doctor_questions
+from components.report_actions import render_report_actions
+from components.report_export import render_report_export
+from components.health_charts import render_health_analytics
+from components.history_panel import render_history_panel
+from components.ux_feedback import render_error_state, render_process_steps, toast_once
+from services import history_service
+from components.assistant_header import render_assistant_header
+from components.assistant_controls import render_assistant_controls
+from components.knowledge_base_card import render_knowledge_base_card
+from components.suggested_questions import render_suggested_questions
+from components.chat_components import render_chat_messages
 from services.api_client import APIClient
 from utils import ui_helpers
 
+FRONTEND_DIR = Path(__file__).resolve().parent
+FAVICON = FRONTEND_DIR / "assets" / "logo" / "favicon.png"
+
 st.set_page_config(
     page_title="MediSimplify AI - Simple Medical Report Explanations",
-    page_icon="🏥",
+    page_icon=str(FAVICON) if FAVICON.exists() else "🩺",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 ui_helpers.apply_custom_theme()
+
+pending_toast = st.session_state.pop("ux_pending_toast", None)
+if pending_toast:
+    st.toast(pending_toast, icon="✅")
 
 SESSION_DEFAULTS = {
     "extraction_result": None,
@@ -27,6 +50,8 @@ SESSION_DEFAULTS = {
     "suggested_questions": [],
     "pending_chat_question": None,
     "last_voice_signature": None,
+    "current_report_file": None,
+    "history_preview_entry": None,
 }
 
 for key, default in SESSION_DEFAULTS.items():
@@ -52,6 +77,7 @@ def reset_report_state() -> None:
         "chat_history",
         "uploaded_report",
         "camera_report",
+        "current_report_file",
     ):
         st.session_state.pop(key, None)
 
@@ -72,12 +98,6 @@ def reset_camera_capture() -> None:
     st.session_state.pop("camera_report", None)
 
 
-st.markdown("<div class='main-header'>MediSimplify AI</div>", unsafe_allow_html=True)
-st.markdown(
-    "<div class='tagline'>Understand your medical report in your language.</div>",
-    unsafe_allow_html=True,
-)
-
 api_client = APIClient()
 health_status = api_client.check_health()
 try:
@@ -86,20 +106,20 @@ except RuntimeError:
     provider_status = {}
 
 with st.sidebar:
-    st.markdown("## MediSimplify AI")
-    st.markdown("### Settings")
+    ui_helpers.render_sidebar_brand()
+
+    st.markdown('<div class="ms-sidebar-label">Experience</div>', unsafe_allow_html=True)
     language = st.selectbox(
         "Language",
         ["English", "हिंदी (Hindi)", "ਪੰਜਾਬੀ (Punjabi)"],
+        help="Choose the language used for report explanations and voice replies.",
     )
+
     provider = st.selectbox(
-        "LLM Provider",
+        "AI Provider",
         ["Gemini", "Groq", "Ollama (Local)"],
         index=0,
-        help=(
-            "Phase 2 image extraction uses Gemini. Phase 3 prepares Gemini, "
-            "Groq, and local Ollama for later medical agents."
-        ),
+        help="Choose the provider used for routing, analysis and chat.",
     )
 
     status_by_name = {
@@ -108,18 +128,17 @@ with st.sidebar:
     }
     selected_key = provider.lower().replace(" (local)", "")
     selected_status = status_by_name.get(selected_key)
+
     if selected_status:
         if selected_status.get("available"):
-            st.success(
-                f"{provider} configured: {selected_status.get('model', 'unknown model')}"
-            )
+            st.success(f"{provider} is ready · {selected_status.get('model', 'model available')}")
         else:
-            st.warning(f"{provider}: {selected_status.get('detail', 'Not available')}")
+            st.warning(selected_status.get("detail", f"{provider} is unavailable"))
 
     if st.button(
-        "Test Selected Provider",
+        "Test AI Provider",
         use_container_width=True,
-        help="Makes one small live model request and may consume API credits.",
+        help="Makes one small live request and may consume API credits.",
         disabled=not selected_status or not selected_status.get("configured", False),
     ):
         with st.spinner(f"Testing {provider}..."):
@@ -132,11 +151,24 @@ with st.sidebar:
             except RuntimeError as exc:
                 st.error(str(exc))
 
-    st.markdown("---")
-    st.write("Current phase: **Phase 8 — Multilingual Voice Assistant**")
+    st.markdown('<div class="ms-sidebar-label">Session</div>', unsafe_allow_html=True)
+    st.caption("Your uploaded report, OCR review, analysis, RAG chat and voice controls remain available below.")
     if st.button("Clear Session", use_container_width=True):
         st.session_state.clear()
         st.rerun()
+
+ui_helpers.render_dashboard_hero()
+provider_count = sum(1 for item in provider_status.get("providers", []) if item.get("configured")) or 3
+ui_helpers.render_dashboard_stats(
+    api_online=health_status.get("status") == "healthy",
+    provider_count=provider_count,
+)
+
+render_history_panel()
+ui_helpers.render_section_heading(
+    "Medical Report Workspace",
+    "Connect the backend, accept the safety guidance and add a report to begin.",
+)
 
 status_col, content_col = st.columns([1, 2])
 
@@ -154,7 +186,11 @@ with status_col:
             "API Server: <span class='status-badge status-offline'>OFFLINE</span>",
             unsafe_allow_html=True,
         )
-        st.error(health_status.get("error", "Backend unavailable"))
+        render_error_state(
+            "Backend is offline",
+            health_status.get("error", "The FastAPI service could not be reached."),
+            "Start it with: uvicorn app.main:app --reload --port 8000",
+        )
         st.code("uvicorn app.main:app --reload --port 8000")
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -186,8 +222,8 @@ with content_col:
         and health_status.get("status") == "healthy"
     )
 
-    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-    st.subheader("Add Medical Report")
+    st.markdown("<div class='glass-card ms-upload-workspace'>", unsafe_allow_html=True)
+    ui_helpers.render_upload_header()
 
     st.radio(
         "Choose report source",
@@ -195,6 +231,7 @@ with content_col:
         horizontal=True,
         key="report_source",
         disabled=not ready or st.session_state.extraction_result is not None,
+        label_visibility="collapsed",
     )
 
     selected_report = None
@@ -248,25 +285,38 @@ with content_col:
     if not ready:
         st.caption("Accept consent and start the backend to enable report input.")
     elif selected_report is not None and st.session_state.extraction_result is None:
-        st.write(
-            f"Selected: **{selected_report['name']}** "
-            f"({selected_report['size'] / 1024:.1f} KB)"
+        ui_helpers.render_selected_file(
+            filename=selected_report["name"],
+            size_bytes=selected_report["size"],
+            content_type=selected_report["content_type"],
         )
-        if st.button("Extract Report", type="primary", use_container_width=True):
-            with st.spinner("Validating and extracting the report..."):
+        if st.button("Extract & Review Report", type="primary", use_container_width=True):
+            st.session_state.current_report_file = selected_report
+            with st.status("Preparing your report...", expanded=True) as status:
+                render_process_steps(
+                    ["Validate upload", "Read document", "Extract medical text", "Prepare review"],
+                    active_index=1,
+                )
                 try:
+                    st.write("🔒 Validating file type and size")
+                    st.write("📄 Reading the medical document")
+                    st.write("🔎 Running OCR and extracting medical text")
                     st.session_state.extraction_result = api_client.extract_report(
                         filename=selected_report["name"],
                         content=selected_report["content"],
                         content_type=selected_report["content_type"],
                     )
+                    st.write("✅ Preparing the side-by-side review")
                     st.session_state.extraction_confirmed = False
                     st.session_state.confirmation_result = None
                     st.session_state.last_extraction_message = (
-                        "Extraction completed successfully. Review the result below."
+                        "Extraction completed successfully. Review and correct the result below."
                     )
+                    status.update(label="Report is ready for review", state="complete")
+                    st.session_state["ux_pending_toast"] = "Report extraction completed."
                     st.rerun()
                 except RuntimeError as exc:
+                    status.update(label="Extraction could not be completed", state="error")
                     st.error(str(exc))
 
     if st.session_state.last_extraction_message:
@@ -282,6 +332,7 @@ with content_col:
             selected_language=language,
             selected_provider=provider,
             is_confirmed=st.session_state.extraction_confirmed,
+            original_file=st.session_state.get("current_report_file"),
         )
         if confirmation:
             st.session_state.extraction_confirmed = True
@@ -351,63 +402,74 @@ with content_col:
                                         language=language_key,
                                         provider=provider,
                                     )
+                                    st.session_state["ux_pending_toast"] = "Your report explanation is ready."
                                     st.rerun()
                                 except RuntimeError as exc:
                                     st.error(str(exc))
                     else:
                         analysis = st.session_state.analysis_result
-                        st.subheader("Educational Report Explanation")
-                        st.caption(
-                            f"Agent: {analysis.get('agent_used', 'unknown')} · "
-                            f"Provider: {analysis.get('provider_used', 'unknown')} · "
-                            f"Model: {analysis.get('model', 'unknown')}"
-                        )
-                        st.write(analysis.get("summary", ""))
-
                         items = analysis.get("items", [])
-                        if items:
-                            st.markdown("#### Report details")
-                            for index, item in enumerate(items, start=1):
-                                title = item.get("name") or f"Item {index}"
-                                with st.expander(title, expanded=index <= 3):
-                                    details = []
-                                    for label, key in (
-                                        ("Value", "observed_value"),
-                                        ("Unit", "unit"),
-                                        ("Reference range", "reference_range"),
-                                        ("Status", "status"),
-                                        ("Dosage", "dosage"),
-                                        ("Frequency", "frequency"),
-                                        ("Duration", "duration"),
-                                        ("Section", "section"),
-                                    ):
-                                        if item.get(key):
-                                            details.append(f"**{label}:** {item[key]}")
-                                    if details:
-                                        st.markdown("  \n".join(details))
-                                    st.write(item.get("simple_explanation", ""))
 
-                        for heading, key, message_type in (
-                            ("Important notes", "important_notes", "info"),
-                            ("Unclear information", "unclear_information", "warning"),
-                            ("Questions for your doctor", "questions_for_doctor", "info"),
-                        ):
-                            values = analysis.get(key, [])
-                            if values:
-                                st.markdown(f"#### {heading}")
-                                for value in values:
-                                    getattr(st, message_type)(value)
+                        # Phase 9.5 Batch 3: persist structured analysis locally.
+                        current_file = st.session_state.get("current_report_file") or {}
+                        history_service.save_report(
+                            report_id=report_id,
+                            filename=current_file.get("name", f"{route.get('report_type', 'medical_report')}.pdf"),
+                            report_type=route.get("report_type", "medical_report"),
+                            language=language,
+                            provider=analysis.get("provider_used") or provider,
+                            analysis=analysis,
+                            routing=route,
+                        )
+                        toast_once(f"history_{report_id}", "Analysis saved to Report History.", "📚")
 
-                        st.warning(analysis.get("disclaimer", ""))
-                        st.success("✅ Phase 5 complete for this report.")
-
-                        st.markdown("---")
-                        st.subheader("Ask Questions About This Report")
-                        st.caption(
-                            "Answers are grounded in the confirmed report using report-scoped "
-                            "retrieval. This chat does not provide diagnosis or treatment advice."
+                        render_report_summary(
+                            analysis,
+                            report_type=route.get("report_type", "medical_report"),
                         )
 
+                        render_status_sections(items)
+
+                        render_health_analytics(items)
+
+                        render_recommendation_cards(
+                            title="Important notes",
+                            items=analysis.get("important_notes", []),
+                            card_type="info",
+                        )
+                        render_recommendation_cards(
+                            title="Unclear information",
+                            items=analysis.get("unclear_information", []),
+                            card_type="warning",
+                        )
+                        render_doctor_questions(analysis.get("questions_for_doctor", []))
+
+                        disclaimer = analysis.get(
+                            "disclaimer",
+                            "This explanation is educational and does not replace professional medical advice.",
+                        )
+                        if disclaimer:
+                            st.markdown(
+                                f'<div class="ms-disclaimer-card">⚕️ {disclaimer}</div>',
+                                unsafe_allow_html=True,
+                            )
+
+                        render_report_actions(
+                            analysis=analysis,
+                            report_type=route.get("report_type", "medical_report"),
+                            on_upload_another=reset_report_state,
+                        )
+
+                        render_report_export(
+                            analysis=analysis,
+                            report_type=route.get("report_type", "medical_report"),
+                            language=language,
+                        )
+
+                        st.success("✅ Phase 5 complete for this report.")
+                        st.markdown('<div id="report-assistant"></div>', unsafe_allow_html=True)
+                        st.markdown("---")
+                        # Phase 9.4 — Intelligent Medical Assistant
                         if st.session_state.knowledge_base_status is None:
                             try:
                                 st.session_state.knowledge_base_status = (
@@ -417,11 +479,23 @@ with content_col:
                                 st.warning(str(exc))
 
                         kb_status = st.session_state.knowledge_base_status or {}
+                        render_assistant_header(
+                            provider=provider,
+                            language=language,
+                            report_type=route.get("report_type", "medical_report"),
+                            ready=bool(kb_status.get("ready")),
+                        )
+                        render_knowledge_base_card(kb_status)
+
                         if not kb_status.get("ready"):
+                            st.info(
+                                "Build the report knowledge base to enable grounded questions and answers."
+                            )
                             if st.button(
                                 "Build Knowledge Base",
                                 type="primary",
                                 use_container_width=True,
+                                key="assistant_build_kb",
                             ):
                                 with st.spinner("Creating report embeddings and FAISS index..."):
                                     try:
@@ -432,23 +506,23 @@ with content_col:
                                     except RuntimeError as exc:
                                         st.error(str(exc))
                         else:
-                            kb_col1, kb_col2, kb_col3 = st.columns(3)
-                            kb_col1.metric("Knowledge base", "Ready")
-                            kb_col2.metric("Chunks", kb_status.get("chunk_count", 0))
-                            kb_col3.metric("Retriever", kb_status.get("vector_store", "FAISS"))
-                            st.caption(
-                                f"Embedding model: {kb_status.get('embedding_model', 'unknown')}"
-                            )
-
-                            action_col1, action_col2 = st.columns(2)
-                            if action_col1.button("Clear Conversation", use_container_width=True):
+                            kb_action_col1, kb_action_col2 = st.columns(2)
+                            if kb_action_col1.button(
+                                "Clear Conversation",
+                                use_container_width=True,
+                                key="assistant_clear_chat",
+                            ):
                                 try:
                                     api_client.clear_conversation(report_id)
                                     st.session_state.chat_history = []
                                     st.rerun()
                                 except RuntimeError as exc:
                                     st.error(str(exc))
-                            if action_col2.button("Rebuild Knowledge Base", use_container_width=True):
+                            if kb_action_col2.button(
+                                "Rebuild Knowledge Base",
+                                use_container_width=True,
+                                key="assistant_rebuild_kb",
+                            ):
                                 with st.spinner("Rebuilding report knowledge base..."):
                                     try:
                                         st.session_state.knowledge_base_status = (
@@ -460,34 +534,7 @@ with content_col:
                                     except RuntimeError as exc:
                                         st.error(str(exc))
 
-                            st.subheader("Intelligent Medical Assistant")
-                            mode_col, style_col = st.columns(2)
-                            assistant_mode = mode_col.selectbox(
-                                "Answer mode",
-                                ["auto", "report", "educational", "hybrid"],
-                                format_func=lambda value: {
-                                    "auto": "Smart Auto Routing",
-                                    "report": "Report Only",
-                                    "educational": "General Education",
-                                    "hybrid": "Report + Education",
-                                }[value],
-                            )
-                            grandma_mode = style_col.toggle(
-                                "Grandma Mode",
-                                help="Uses very simple, gentle, everyday language.",
-                            )
-
-                            voice_col1, voice_col2 = st.columns(2)
-                            voice_input_enabled = voice_col1.toggle(
-                                "Voice Input",
-                                value=True,
-                                help="Record your question and transcribe it locally with Whisper.",
-                            )
-                            voice_reply_enabled = voice_col2.toggle(
-                                "Voice Reply",
-                                value=False,
-                                help="Read the assistant answer aloud in the selected language.",
-                            )
+                            controls = render_assistant_controls()
 
                             if not st.session_state.suggested_questions:
                                 try:
@@ -496,37 +543,25 @@ with content_col:
                                 except RuntimeError:
                                     st.session_state.suggested_questions = []
 
-                            if st.session_state.suggested_questions:
-                                st.caption("Suggested questions")
-                                suggestion_columns = st.columns(2)
-                                for index, suggestion in enumerate(st.session_state.suggested_questions):
-                                    if suggestion_columns[index % 2].button(
-                                        suggestion,
-                                        key=f"suggestion_{index}",
-                                        use_container_width=True,
-                                    ):
-                                        st.session_state.pending_chat_question = suggestion
-                                        st.rerun()
+                            selected_suggestion = render_suggested_questions(
+                                st.session_state.suggested_questions
+                            )
+                            if selected_suggestion:
+                                st.session_state.pending_chat_question = selected_suggestion
+                                st.rerun()
 
-                            for message in st.session_state.chat_history:
-                                with st.chat_message(message["role"]):
-                                    st.write(message["content"])
-                                    if message.get("mode_used"):
-                                        st.caption(
-                                            f"Mode: {message['mode_used'].replace('_', ' ').title()} · "
-                                            f"Style: {message.get('explanation_style', 'standard').title()}"
-                                        )
-                                    if message.get("audio"):
-                                        st.audio(message["audio"], format="audio/mp3")
-                                    if message.get("sources"):
-                                        with st.expander("Report sections used"):
-                                            for source in message["sources"]:
-                                                st.caption(source.get("chunk_id", "Report section"))
-                                                st.write(source.get("excerpt", ""))
+                            st.markdown(
+                                "<div class='ms-assistant-section-label'>Conversation</div>",
+                                unsafe_allow_html=True,
+                            )
+                            render_chat_messages(st.session_state.chat_history)
 
                             voice_question = None
-                            if voice_input_enabled:
-                                recorded_audio = st.audio_input("Record your question")
+                            if controls["voice_input"]:
+                                recorded_audio = st.audio_input(
+                                    "Record your question",
+                                    key="assistant_audio_input",
+                                )
                                 if recorded_audio is not None:
                                     signature = (recorded_audio.name, len(recorded_audio.getvalue()))
                                     if signature != st.session_state.last_voice_signature:
@@ -550,9 +585,14 @@ with content_col:
                                                 st.error(str(exc))
 
                             typed_question = st.chat_input(
-                                "Ask about your report or a general medical term"
+                                "Ask about your report or a general medical term",
+                                key="assistant_chat_input",
                             )
-                            question = st.session_state.pending_chat_question or voice_question or typed_question
+                            question = (
+                                st.session_state.pending_chat_question
+                                or voice_question
+                                or typed_question
+                            )
                             if question:
                                 st.session_state.pending_chat_question = None
                                 st.session_state.chat_history.append(
@@ -563,29 +603,36 @@ with content_col:
                                     "हिंदी (Hindi)": "hindi",
                                     "ਪੰਜਾਬੀ (Punjabi)": "punjabi",
                                 }[language]
-                                with st.spinner("Choosing the safest answer mode and preparing your answer..."):
+                                with st.spinner(
+                                    "Choosing the safest answer mode and preparing your answer..."
+                                ):
                                     try:
                                         chat_result = api_client.ask_report_question(
                                             report_id=report_id,
                                             question=question,
                                             language=language_key,
                                             provider=provider,
-                                            mode=assistant_mode,
+                                            mode=controls["mode"],
                                             explanation_style=(
-                                                "grandma" if grandma_mode else "standard"
+                                                "grandma"
+                                                if controls["grandma_mode"]
+                                                else "standard"
                                             ),
                                         )
                                         answer_text = chat_result.get("answer", "")
                                         answer_audio = None
-                                        if voice_reply_enabled and answer_text:
+                                        if controls["voice_reply"] and answer_text:
                                             try:
                                                 answer_audio = api_client.synthesize_speech(
                                                     text=answer_text,
                                                     language=language_key,
-                                                    slow=grandma_mode,
+                                                    slow=controls["grandma_mode"],
                                                 )
                                             except RuntimeError as voice_exc:
-                                                st.warning(f"Text answer is ready, but voice output failed: {voice_exc}")
+                                                st.warning(
+                                                    "Text answer is ready, but voice output failed: "
+                                                    f"{voice_exc}"
+                                                )
                                         st.session_state.chat_history.append(
                                             {
                                                 "role": "assistant",
@@ -612,6 +659,9 @@ with content_col:
         st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown(
-    "<div class='footer'>MediSimplify AI — Phase 8 Multilingual Voice Assistant</div>",
+    "<div class='footer'>MediSimplify AI — Phase 9 Frontend Enhancement</div>",
     unsafe_allow_html=True,
 )
+
+
+ui_helpers.render_footer()
