@@ -41,3 +41,7 @@ Desktop.ini
 .idea/
 *.swp
 *.swo
+
+# Cloud/local persistent runtime data
+backend/persistent_data/
+frontend/data/*.tmp

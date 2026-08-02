@@ -1,5 +1,7 @@
 from contextlib import asynccontextmanager
 
+from loguru import logger
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -27,7 +29,10 @@ setup_logging()
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     validate_runtime_environment()
-    yield
+    try:
+        yield
+    finally:
+        logger.info("MediSimplify shutdown complete; no new requests will be accepted.")
 
 
 app = FastAPI(

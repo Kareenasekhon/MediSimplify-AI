@@ -1,0 +1,69 @@
+services:
+  - type: web
+    name: medisimplify-api
+    runtime: docker
+    region: singapore
+    plan: starter
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/v1/health/ready
+    maxShutdownDelaySeconds: 60
+    autoDeployTrigger: checksPass
+    disk:
+      name: medisimplify-backend-data
+      mountPath: /var/data
+      sizeGB: 10
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: API_DOCS_ENABLED
+        value: "false"
+      - key: PERSISTENT_DATA_DIR
+        value: /var/data
+      - key: HF_HOME
+        value: /var/data/model_cache/huggingface
+      - key: TESSERACT_CMD
+        value: /usr/bin/tesseract
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: DEFAULT_LLM_PROVIDER
+        value: groq
+      - key: LLM_FALLBACK_PROVIDERS
+        value: gemini
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OLLAMA_ENABLED
+        value: "false"
+      - key: VOICE_TRANSCRIPTION_ENABLED
+        value: "false"
+
+  - type: web
+    name: medisimplify-web
+    runtime: docker
+    region: singapore
+    plan: starter
+    rootDir: frontend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /_stcore/health
+    maxShutdownDelaySeconds: 30
+    autoDeployTrigger: checksPass
+    disk:
+      name: medisimplify-frontend-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: BACKEND_API_HOSTPORT
+        fromService:
+          type: web
+          name: medisimplify-api
+          property: hostport
+      - key: REPORT_HISTORY_PATH
+        value: /var/data/report_history.json
+      - key: BACKEND_REQUEST_TIMEOUT_SECONDS
+        value: "180"
+      - key: BACKEND_CONNECT_TIMEOUT_SECONDS
+        value: "20"

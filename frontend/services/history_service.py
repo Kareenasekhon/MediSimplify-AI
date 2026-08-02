@@ -7,11 +7,17 @@ from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
+import os
 from threading import RLock
 from typing import Any, Mapping
 
 FRONTEND_DIR = Path(__file__).resolve().parents[1]
-HISTORY_PATH = FRONTEND_DIR / "data" / "report_history.json"
+HISTORY_PATH = Path(
+    os.environ.get(
+        "REPORT_HISTORY_PATH",
+        str(FRONTEND_DIR / "data" / "report_history.json"),
+    )
+)
 _LOCK = RLock()
 _MAX_ENTRIES = 100
 

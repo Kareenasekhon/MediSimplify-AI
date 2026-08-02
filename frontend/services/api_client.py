@@ -8,10 +8,14 @@ class APIClient:
     """HTTP client for the MediSimplify FastAPI backend."""
 
     def __init__(self, base_url: Optional[str] = None) -> None:
-        self.base_url = (
+        configured_url = os.environ.get("BACKEND_API_URL", "").strip()
+        private_hostport = os.environ.get("BACKEND_API_HOSTPORT", "").strip()
+        resolved_url = (
             base_url
-            or os.environ.get("BACKEND_API_URL", "http://localhost:8000")
-        ).rstrip("/")
+            or configured_url
+            or (f"http://{private_hostport}" if private_hostport else "http://localhost:8000")
+        )
+        self.base_url = resolved_url.rstrip("/")
         request_timeout = float(os.environ.get("BACKEND_REQUEST_TIMEOUT_SECONDS", "120"))
         connect_timeout = float(os.environ.get("BACKEND_CONNECT_TIMEOUT_SECONDS", "10"))
         self.timeout = httpx.Timeout(request_timeout, connect=connect_timeout)

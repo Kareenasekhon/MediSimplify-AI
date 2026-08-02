@@ -33,7 +33,12 @@ class Settings(BaseSettings):
 
     max_report_size_mb: int = Field(default=5, ge=1, le=100)
     max_question_length: int = Field(default=4000, ge=100, le=20000)
+    persistent_data_dir: Path = Field(
+        default=BASE_DIR / "persistent_data",
+        validation_alias=AliasChoices("PERSISTENT_DATA_DIR", "DATA_DIR"),
+    )
     temporary_data_dir: Path = BASE_DIR / "temporary_data"
+    model_cache_dir: Path | None = None
 
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"
@@ -116,6 +121,26 @@ class Settings(BaseSettings):
                     "GEMINI_API_KEY, GROQ_API_KEY, or OLLAMA_ENABLED=true"
                 )
         return self
+
+    @model_validator(mode="after")
+    def resolve_runtime_paths(self) -> "Settings":
+        """Resolve cloud-friendly storage defaults without overriding explicit values."""
+        fields_set = self.model_fields_set
+        if "temporary_data_dir" not in fields_set:
+            self.temporary_data_dir = self.persistent_data_dir / "temporary"
+        if self.model_cache_dir is None:
+            self.model_cache_dir = self.persistent_data_dir / "model_cache"
+        return self
+
+    @property
+    def cloud_platform(self) -> str:
+        import os
+
+        if os.getenv("RENDER") == "true":
+            return "render"
+        if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PROJECT_ID"):
+            return "railway"
+        return "local"
 
     @property
     def cors_origins(self) -> list[str]:

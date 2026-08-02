@@ -10,15 +10,27 @@ from app.core.config import settings
 
 def validate_runtime_environment() -> None:
     """Create required directories and log a secret-safe startup summary."""
-    Path(settings.temporary_data_dir).mkdir(parents=True, exist_ok=True)
+    for directory in (
+        Path(settings.persistent_data_dir),
+        Path(settings.temporary_data_dir),
+        Path(settings.model_cache_dir or settings.persistent_data_dir / "model_cache"),
+    ):
+        directory.mkdir(parents=True, exist_ok=True)
 
     provider_text = ", ".join(settings.configured_providers) or "none configured"
     logger.info(
-        "Starting MediSimplify | environment={} | debug={} | providers={} | docs={}",
+        "Starting MediSimplify | environment={} | platform={} | debug={} | providers={} | docs={}",
         settings.app_env,
+        settings.cloud_platform,
         settings.debug,
         provider_text,
         "enabled" if settings.api_docs_enabled else "disabled",
+    )
+    logger.info(
+        "Runtime storage | persistent={} | temporary={} | model_cache={}",
+        settings.persistent_data_dir,
+        settings.temporary_data_dir,
+        settings.model_cache_dir,
     )
     logger.info(
         "Runtime limits | report={} MB | audio={} MB | question={} chars | CORS origins={}",
