@@ -10,24 +10,33 @@ venv/
 ENV/
 env/
 
-# Environment variables
+# Environment variables and secrets
 .env
 *.env
+!.env.docker.example
+!backend/.env.example
 
-# Audio and generated temporary assets
+# Runtime data and generated assets
 backend/temporary_data/
 *.mp3
 *.zip
-*.json
-!project_plan.txt
+*.log
+frontend/data/report_history.json
 
-# OS-specific
+# Model and vector caches
+.cache/
+.huggingface/
+faiss_db/
+vector_store/
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# OS / IDE
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 .DS_Store
-
-# IDEs and Editors
 .vscode/
 .idea/
 *.swp
