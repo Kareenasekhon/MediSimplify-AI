@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from functools import lru_cache
 from typing import Any
 
 from app.core.config import settings
@@ -25,23 +26,18 @@ class GroqProvider(BaseLLMProvider):
         try:
             from groq import AsyncGroq
         except ImportError as exc:
-            raise ProviderError(
-                "Groq SDK is unavailable. Install backend requirements."
-            ) from exc
+            raise ProviderError("Groq SDK is unavailable. Install backend requirements.") from exc
         return AsyncGroq
 
-    async def generate(
-        self,
-        messages: list[LLMMessage],
-        *,
-        temperature: float,
-        max_tokens: int,
-        require_json: bool = False,
-    ) -> str:
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def _client():
+        AsyncGroq = GroqProvider._load_sdk()
+        return AsyncGroq(api_key=settings.groq_api_key)
+
+    async def generate(self, messages: list[LLMMessage], *, temperature: float, max_tokens: int, require_json: bool = False) -> str:
         if not self.is_configured():
             raise ProviderError("Groq is not configured. Add GROQ_API_KEY to backend/.env.")
-
-        AsyncGroq = self._load_sdk()
         request: dict[str, Any] = {
             "model": self.model_name,
             "messages": [message.model_dump() for message in messages],
@@ -50,11 +46,9 @@ class GroqProvider(BaseLLMProvider):
         }
         if require_json:
             request["response_format"] = {"type": "json_object"}
-
         try:
-            client = AsyncGroq(api_key=settings.groq_api_key)
             response = await asyncio.wait_for(
-                client.chat.completions.create(**request),
+                self._client().chat.completions.create(**request),
                 timeout=settings.llm_timeout_seconds,
             )
             content = response.choices[0].message.content

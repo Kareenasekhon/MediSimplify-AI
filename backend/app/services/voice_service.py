@@ -24,11 +24,14 @@ def _load_whisper_model():
             "Voice transcription requires faster-whisper. Run: pip install faster-whisper"
         ) from exc
 
-    return WhisperModel(
-        settings.voice_whisper_model,
-        device=settings.voice_whisper_device,
-        compute_type=settings.voice_whisper_compute_type,
-    )
+    kwargs = {
+        "device": settings.voice_whisper_device,
+        "compute_type": settings.voice_whisper_compute_type,
+        "num_workers": settings.whisper_num_workers,
+    }
+    if settings.whisper_cpu_threads > 0:
+        kwargs["cpu_threads"] = settings.whisper_cpu_threads
+    return WhisperModel(settings.voice_whisper_model, **kwargs)
 
 
 def get_status() -> dict:
@@ -68,7 +71,7 @@ def transcribe_audio(content: bytes, filename: str, language: str | None = None)
         segments, info = model.transcribe(
     temp_path,
     language=code,
-    beam_size=1,
+    beam_size=settings.voice_beam_size,
     vad_filter=True,
     vad_parameters=dict(
         min_silence_duration_ms=300,

@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = Field(default=45.0, gt=0, le=300)
     llm_max_retries: int = Field(default=1, ge=0, le=5)
     llm_retry_delay_seconds: float = Field(default=0.5, ge=0, le=30)
+    provider_instance_cache_enabled: bool = True
+    http_max_connections: int = Field(default=20, ge=1, le=200)
+    http_max_keepalive_connections: int = Field(default=10, ge=1, le=100)
 
     local_ocr_enabled: bool = True
     tesseract_cmd: str = ""
@@ -55,10 +58,15 @@ class Settings(BaseSettings):
     ocr_structuring_provider: Literal["gemini", "groq", "ollama"] = "groq"
     ocr_pdf_dpi: int = Field(default=220, ge=72, le=600)
     ocr_max_pdf_pages: int = Field(default=15, ge=1, le=100)
+    document_max_pdf_pages: int = Field(default=30, ge=1, le=500)
 
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     rag_chunk_size: int = Field(default=900, ge=200, le=4000)
     rag_chunk_overlap: int = Field(default=140, ge=0, le=1000)
+    embedding_batch_size: int = Field(default=32, ge=1, le=256)
+    embedding_query_cache_size: int = Field(default=256, ge=0, le=4096)
+    max_in_memory_vector_stores: int = Field(default=32, ge=1, le=512)
+    chat_history_max_messages: int = Field(default=12, ge=2, le=100)
 
     voice_transcription_enabled: bool = True
     voice_speech_enabled: bool = True
@@ -67,6 +75,8 @@ class Settings(BaseSettings):
     voice_whisper_compute_type: str = "int8"
     voice_beam_size: int = Field(default=1, ge=1, le=10)
     voice_max_audio_mb: int = Field(default=15, ge=1, le=100)
+    whisper_cpu_threads: int = Field(default=0, ge=0, le=64)
+    whisper_num_workers: int = Field(default=1, ge=1, le=8)
     allowed_audio_extensions: str = "wav,mp3,m4a,ogg,webm,flac"
 
     model_config = SettingsConfigDict(

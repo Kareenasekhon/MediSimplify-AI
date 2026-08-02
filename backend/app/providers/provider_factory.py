@@ -1,3 +1,6 @@
+from functools import lru_cache
+
+from app.core.config import settings
 from app.core.exceptions import ProviderError
 from app.models.llm_models import ProviderName
 from app.providers.base_provider import BaseLLMProvider
@@ -7,7 +10,7 @@ from app.providers.ollama_provider import OllamaProvider
 
 
 class ProviderFactory:
-    """Create provider adapters without exposing API keys to callers."""
+    """Create and optionally reuse provider adapters without exposing API keys."""
 
     _provider_classes = {
         ProviderName.GEMINI: GeminiProvider,
@@ -15,15 +18,28 @@ class ProviderFactory:
         ProviderName.OLLAMA: OllamaProvider,
     }
 
+    @staticmethod
+    @lru_cache(maxsize=3)
+    def _cached_create(provider_name: ProviderName) -> BaseLLMProvider:
+        return ProviderFactory._provider_classes[provider_name]()
+
     @classmethod
     def create(cls, provider_name: ProviderName | str) -> BaseLLMProvider:
         try:
             normalized = ProviderName(provider_name)
-            provider_class = cls._provider_classes[normalized]
-        except (ValueError, KeyError) as exc:
+        except ValueError as exc:
             raise ProviderError(f"Unsupported LLM provider: {provider_name}") from exc
-        return provider_class()
+
+        if normalized not in cls._provider_classes:
+            raise ProviderError(f"Unsupported LLM provider: {provider_name}")
+        if settings.provider_instance_cache_enabled:
+            return cls._cached_create(normalized)
+        return cls._provider_classes[normalized]()
 
     @classmethod
     def all(cls) -> list[BaseLLMProvider]:
-        return [provider_class() for provider_class in cls._provider_classes.values()]
+        return [cls.create(name) for name in cls._provider_classes]
+
+    @classmethod
+    def clear_cache(cls) -> None:
+        cls._cached_create.cache_clear()

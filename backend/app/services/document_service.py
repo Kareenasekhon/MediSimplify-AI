@@ -1,94 +1,89 @@
 import os
-from pypdf import PdfReader
+
 import docx
+from pypdf import PdfReader
+
+from app.core.config import settings
 from app.core.exceptions import ExtractionError
 
+
 def extract_text_from_txt(file_path: str) -> str:
-    """
-    Reads a plain text file, attempting UTF-8 first, with Latin-1 fallback.
-    """
+    """Read a plain-text report using UTF-8 with a Latin-1 fallback."""
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            return f.read()
+        with open(file_path, "r", encoding="utf-8") as file:
+            return file.read()
     except UnicodeDecodeError:
         try:
-            with open(file_path, "r", encoding="latin-1") as f:
-                return f.read()
+            with open(file_path, "r", encoding="latin-1") as file:
+                return file.read()
         except Exception as exc:
-            raise ExtractionError(f"Failed to read text file with Latin-1 fallback: {str(exc)}")
+            raise ExtractionError(f"Failed to read text file with Latin-1 fallback: {exc}") from exc
     except Exception as exc:
-        raise ExtractionError(f"Failed to read plain text file: {str(exc)}")
+        raise ExtractionError(f"Failed to read plain text file: {exc}") from exc
+
 
 def extract_text_from_docx(file_path: str) -> str:
-    """
-    Extracts text from a digital DOCX document.
-    """
+    """Extract non-empty paragraphs from a digital DOCX document."""
     try:
-        doc = docx.Document(file_path)
-        full_text = []
-        for para in doc.paragraphs:
-            if para.text.strip():
-                full_text.append(para.text)
-        return "\n".join(full_text)
+        document = docx.Document(file_path)
+        return "\n".join(paragraph.text for paragraph in document.paragraphs if paragraph.text.strip())
     except Exception as exc:
-        raise ExtractionError(f"Failed to extract text from DOCX file: {str(exc)}")
+        raise ExtractionError(f"Failed to extract text from DOCX file: {exc}") from exc
+
+
+def _pdf_reader(file_path: str) -> PdfReader:
+    reader = PdfReader(file_path)
+    if reader.is_encrypted:
+        raise ExtractionError(
+            "The PDF report is password-protected and cannot be processed. "
+            "Please remove the password and try again."
+        )
+    if len(reader.pages) > settings.document_max_pdf_pages:
+        raise ExtractionError(
+            f"The PDF contains {len(reader.pages)} pages. The current limit is "
+            f"{settings.document_max_pdf_pages} pages."
+        )
+    return reader
+
 
 def extract_text_from_pdf(file_path: str) -> str:
-    """
-    Extracts text from a digital PDF file. Checks for password protection.
-    """
+    """Extract text from a bounded, non-encrypted digital PDF."""
     try:
-        reader = PdfReader(file_path)
-        if reader.is_encrypted:
-            raise ExtractionError(
-                "The PDF report is password-protected and cannot be processed. Please remove the password and try again."
-            )
-            
-        full_text = []
-        for page in reader.pages:
-            text = page.extract_text()
-            if text:
-                full_text.append(text)
-        return "\n".join(full_text)
+        reader = _pdf_reader(file_path)
+        return "\n".join(text for page in reader.pages if (text := page.extract_text()))
     except ExtractionError:
         raise
     except Exception as exc:
-        raise ExtractionError(f"Failed to extract text from PDF file: {str(exc)}")
+        raise ExtractionError(f"Failed to extract text from PDF file: {exc}") from exc
+
 
 def is_scanned_or_image_only_pdf(file_path: str) -> bool:
-    """
-    Determines if a PDF is scanned/image-only by extracting text.
-    If length is < 150 characters, but file size > 15 KB, it's flagged as scanned.
-    """
+    """Detect likely scanned PDFs using an early-exit text-density check."""
     try:
-        reader = PdfReader(file_path)
-        if reader.is_encrypted:
-            return False  # Will fail validation on check
-        
+        reader = _pdf_reader(file_path)
         extracted_char_count = 0
-        for page in reader.pages:
+        # A few pages are enough for the scanned/digital classification and avoid
+        # parsing an entire long report twice.
+        sample_pages = min(len(reader.pages), 5)
+        for page in reader.pages[:sample_pages]:
             text = page.extract_text()
             if text:
                 extracted_char_count += len(text.strip())
-        
-        file_size = os.path.getsize(file_path)
-        # Low character density relative to size indicates scanned images inside
-        if extracted_char_count < 150 and file_size > 15 * 1024:
-            return True
-        return False
+                if extracted_char_count >= 150:
+                    return False
+        return extracted_char_count < 150 and os.path.getsize(file_path) > 15 * 1024
+    except ExtractionError:
+        raise
     except Exception:
-        # Fallback to False on parsing error so main routine handles failure
         return False
 
+
 def extract_document_text(file_path: str, ext: str) -> str:
-    """
-    Unified extraction router based on file extension.
-    """
+    """Route extraction according to the validated file extension."""
     if ext == "txt":
         return extract_text_from_txt(file_path)
-    elif ext == "docx":
+    if ext == "docx":
         return extract_text_from_docx(file_path)
-    elif ext == "pdf":
+    if ext == "pdf":
         return extract_text_from_pdf(file_path)
-    else:
-        raise ExtractionError(f"Unsupported document extension: .{ext}")
+    raise ExtractionError(f"Unsupported document extension: .{ext}")

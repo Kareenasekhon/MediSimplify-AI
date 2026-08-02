@@ -1,9 +1,11 @@
+from collections import OrderedDict
 from dataclasses import dataclass
 from threading import RLock
 from typing import Protocol
 
 import numpy as np
 
+from app.core.config import settings
 from app.core.exceptions import ProviderError
 from app.models.rag_models import ReportChunk, RetrievedChunk
 
@@ -31,11 +33,12 @@ class _NumpyIndex:
 
 
 class VectorStoreService:
-    """Report-scoped in-memory vector store using FAISS with a safe NumPy fallback."""
+    """Bounded report-scoped vector-store cache with LRU eviction."""
 
-    def __init__(self) -> None:
-        self._stores: dict[str, StoredKnowledgeBase] = {}
+    def __init__(self, max_stores: int | None = None) -> None:
+        self._stores: OrderedDict[str, StoredKnowledgeBase] = OrderedDict()
         self._lock = RLock()
+        self.max_stores = max_stores or settings.max_in_memory_vector_stores
 
     @staticmethod
     def _build_index(vectors: np.ndarray) -> tuple[VectorIndex, str]:
@@ -54,19 +57,19 @@ class VectorStoreService:
         if len(chunks) != len(vectors):
             raise ProviderError("Chunk and embedding counts do not match.")
         index, backend = self._build_index(vectors)
-        store = StoredKnowledgeBase(
-            chunks=chunks,
-            index=index,
-            dimension=int(vectors.shape[1]),
-            backend=backend,
-        )
+        store = StoredKnowledgeBase(chunks=chunks, index=index, dimension=int(vectors.shape[1]), backend=backend)
         with self._lock:
             self._stores[report_id] = store
+            self._stores.move_to_end(report_id)
+            while len(self._stores) > self.max_stores:
+                self._stores.popitem(last=False)
         return store
 
     def search(self, report_id: str, query_vector: np.ndarray, top_k: int) -> list[RetrievedChunk]:
         with self._lock:
             store = self._stores.get(report_id)
+            if store is not None:
+                self._stores.move_to_end(report_id)
         if store is None:
             return []
         scores, indexes = store.index.search(
@@ -83,11 +86,18 @@ class VectorStoreService:
 
     def get(self, report_id: str) -> StoredKnowledgeBase | None:
         with self._lock:
-            return self._stores.get(report_id)
+            store = self._stores.get(report_id)
+            if store is not None:
+                self._stores.move_to_end(report_id)
+            return store
 
     def delete(self, report_id: str) -> bool:
         with self._lock:
             return self._stores.pop(report_id, None) is not None
+
+    def clear(self) -> None:
+        with self._lock:
+            self._stores.clear()
 
 
 vector_store_service = VectorStoreService()

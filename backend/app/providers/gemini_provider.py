@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from functools import lru_cache
 from typing import Any
 
 from app.core.config import settings
@@ -26,39 +27,29 @@ class GeminiProvider(BaseLLMProvider):
             from google import genai
             from google.genai import types
         except ImportError as exc:
-            raise ProviderError(
-                "Gemini SDK is unavailable. Install backend requirements."
-            ) from exc
+            raise ProviderError("Gemini SDK is unavailable. Install backend requirements.") from exc
         return genai, types
 
-    async def generate(
-        self,
-        messages: list[LLMMessage],
-        *,
-        temperature: float,
-        max_tokens: int,
-        require_json: bool = False,
-    ) -> str:
+    @staticmethod
+    @lru_cache(maxsize=1)
+    def _client():
+        genai, _ = GeminiProvider._load_sdk()
+        return genai.Client(api_key=settings.gemini_api_key)
+
+    async def generate(self, messages: list[LLMMessage], *, temperature: float, max_tokens: int, require_json: bool = False) -> str:
         if not self.is_configured():
             raise ProviderError("Gemini is not configured. Add GEMINI_API_KEY to backend/.env.")
-
-        genai, types = self._load_sdk()
+        _, types = self._load_sdk()
         system_parts = [m.content for m in messages if m.role == "system"]
-        conversation = "\n\n".join(
-            f"{m.role.upper()}: {m.content}" for m in messages if m.role != "system"
-        )
-        config_kwargs: dict[str, Any] = {
-            "temperature": temperature,
-            "max_output_tokens": max_tokens,
-        }
+        conversation = "\n\n".join(f"{m.role.upper()}: {m.content}" for m in messages if m.role != "system")
+        config_kwargs: dict[str, Any] = {"temperature": temperature, "max_output_tokens": max_tokens}
         if system_parts:
             config_kwargs["system_instruction"] = "\n\n".join(system_parts)
         if require_json:
             config_kwargs["response_mime_type"] = "application/json"
 
         def _call() -> str:
-            client = genai.Client(api_key=settings.gemini_api_key)
-            response = client.models.generate_content(
+            response = self._client().models.generate_content(
                 model=self.model_name,
                 contents=conversation,
                 config=types.GenerateContentConfig(**config_kwargs),
@@ -69,9 +60,7 @@ class GeminiProvider(BaseLLMProvider):
             return text.strip()
 
         try:
-            return await asyncio.wait_for(
-                asyncio.to_thread(_call), timeout=settings.llm_timeout_seconds
-            )
+            return await asyncio.wait_for(asyncio.to_thread(_call), timeout=settings.llm_timeout_seconds)
         except ProviderError:
             raise
         except asyncio.TimeoutError as exc:

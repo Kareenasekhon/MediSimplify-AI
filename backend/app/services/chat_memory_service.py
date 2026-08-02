@@ -1,13 +1,14 @@
 from threading import RLock
 
+from app.core.config import settings
 from app.models.chat_models import ChatMessage
 
 
 class ChatMemoryService:
-    """Short-lived conversation history isolated by report ID."""
+    """Bounded short-lived conversation history isolated by report ID."""
 
-    def __init__(self, max_messages: int = 12) -> None:
-        self.max_messages = max_messages
+    def __init__(self, max_messages: int | None = None) -> None:
+        self.max_messages = max_messages or settings.chat_history_max_messages
         self._history: dict[str, list[ChatMessage]] = {}
         self._lock = RLock()
 
@@ -18,9 +19,10 @@ class ChatMemoryService:
     def add_turn(self, report_id: str, question: str, answer: str) -> None:
         with self._lock:
             history = self._history.setdefault(report_id, [])
-            history.extend(
-                [ChatMessage(role="user", content=question), ChatMessage(role="assistant", content=answer)]
-            )
+            history.extend([
+                ChatMessage(role="user", content=question),
+                ChatMessage(role="assistant", content=answer),
+            ])
             self._history[report_id] = history[-self.max_messages :]
 
     def clear(self, report_id: str) -> bool:
