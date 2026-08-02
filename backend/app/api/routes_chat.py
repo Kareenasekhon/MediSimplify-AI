@@ -10,12 +10,20 @@ from app.models.rag_models import KnowledgeBaseStatus
 from app.services import rag_service
 from app.services.chat_memory_service import chat_memory_service
 from app.services.vector_store_service import vector_store_service
+from app.core.config import settings
+from app.core.exceptions import ValidationError
+from app.utils.file_validator import validate_identifier
 
 router = APIRouter(prefix="/chat", tags=["Intelligent Medical Assistant"])
 
 
 @router.post("", response_model=ChatResponse, status_code=status.HTTP_200_OK)
 async def chat_with_report(request: ChatRequest) -> ChatResponse:
+    validate_identifier(request.report_id, "report ID")
+    if len(request.question.strip()) > settings.max_question_length:
+        raise ValidationError(
+            f"Question exceeds the {settings.max_question_length}-character limit."
+        )
     return await rag_service.answer_question(request)
 
 
@@ -25,6 +33,7 @@ async def chat_with_report(request: ChatRequest) -> ChatResponse:
     status_code=status.HTTP_200_OK,
 )
 async def suggested_questions(report_id: str) -> SuggestedQuestionsResponse:
+    report_id = validate_identifier(report_id, "report ID")
     return rag_service.get_suggested_questions(report_id)
 
 
@@ -34,6 +43,7 @@ async def suggested_questions(report_id: str) -> SuggestedQuestionsResponse:
     status_code=status.HTTP_200_OK,
 )
 async def build_knowledge_base(report_id: str, force: bool = False) -> KnowledgeBaseStatus:
+    report_id = validate_identifier(report_id, "report ID")
     return rag_service.build_knowledge_base(report_id, force=force)
 
 
@@ -43,6 +53,7 @@ async def build_knowledge_base(report_id: str, force: bool = False) -> Knowledge
     status_code=status.HTTP_200_OK,
 )
 async def knowledge_base_status(report_id: str) -> KnowledgeBaseStatus:
+    report_id = validate_identifier(report_id, "report ID")
     return rag_service.get_knowledge_base_status(report_id)
 
 
@@ -52,6 +63,7 @@ async def knowledge_base_status(report_id: str) -> KnowledgeBaseStatus:
     status_code=status.HTTP_200_OK,
 )
 async def clear_conversation(report_id: str) -> ClearConversationResponse:
+    report_id = validate_identifier(report_id, "report ID")
     cleared = chat_memory_service.clear(report_id)
     return ClearConversationResponse(
         report_id=report_id,
@@ -66,6 +78,7 @@ async def clear_conversation(report_id: str) -> ClearConversationResponse:
     status_code=status.HTTP_200_OK,
 )
 async def delete_knowledge_base(report_id: str) -> KnowledgeBaseStatus:
+    report_id = validate_identifier(report_id, "report ID")
     vector_store_service.delete(report_id)
     chat_memory_service.clear(report_id)
     return rag_service.get_knowledge_base_status(report_id)

@@ -12,7 +12,9 @@ class APIClient:
             base_url
             or os.environ.get("BACKEND_API_URL", "http://localhost:8000")
         ).rstrip("/")
-        self.timeout = httpx.Timeout(120.0, connect=10.0)
+        request_timeout = float(os.environ.get("BACKEND_REQUEST_TIMEOUT_SECONDS", "120"))
+        connect_timeout = float(os.environ.get("BACKEND_CONNECT_TIMEOUT_SECONDS", "10"))
+        self.timeout = httpx.Timeout(request_timeout, connect=connect_timeout)
 
     def check_health(self) -> Dict[str, Any]:
         """Query the backend health endpoint."""

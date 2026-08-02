@@ -3,6 +3,7 @@ from fastapi.responses import Response
 
 from app.models.voice_models import SpeechRequest, TranscriptionResponse, VoiceStatusResponse
 from app.services import voice_service
+from app.utils.file_validator import validate_audio_upload
 
 router = APIRouter(prefix="/voice", tags=["Voice Assistant"])
 
@@ -22,7 +23,10 @@ async def transcribe_voice(
     language: str | None = Form(default=None),
 ) -> TranscriptionResponse:
     content = await audio.read()
-    result = voice_service.transcribe_audio(content, audio.filename or "voice.wav", language)
+    safe_name = validate_audio_upload(
+        content, audio.filename or "voice.wav", audio.content_type
+    )
+    result = voice_service.transcribe_audio(content, safe_name, language)
     return TranscriptionResponse(**result)
 
 

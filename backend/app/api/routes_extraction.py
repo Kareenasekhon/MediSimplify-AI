@@ -11,7 +11,12 @@ from app.services import (
     multimodal_service,
     session_service,
 )
-from app.utils.file_validator import check_file_size, validate_uploaded_file
+from app.utils.file_validator import (
+    check_file_size,
+    validate_file_signature,
+    validate_identifier,
+    validate_uploaded_file,
+)
 from app.utils.temporary_files import delete_temporary_file, save_temporary_file
 
 router = APIRouter(tags=["Extraction"])
@@ -30,6 +35,7 @@ async def extract_report(file: UploadFile = File(...)) -> ReportExtractionRespon
 
     try:
         check_file_size(temporary_path)
+        validate_file_signature(temporary_path, extension)
         report_id = Path(temporary_path).stem
         warnings: list[str] = []
         is_scanned_pdf = False
@@ -123,6 +129,7 @@ async def confirm_report_analysis(
     request: ExtractionConfirmRequest,
 ) -> Dict[str, str]:
     """Store user-reviewed extraction content for the next project phase."""
+    report_id = validate_identifier(report_id, "report ID")
     session = session_service.get_session(report_id)
     if not session:
         raise ResourceNotFoundError(

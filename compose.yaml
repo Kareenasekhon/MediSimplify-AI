@@ -10,7 +10,10 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: 8000
-      ENV: docker
+      APP_ENV: docker
+      DEBUG: "false"
+      API_DOCS_ENABLED: "true"
+      ALLOWED_ORIGINS: http://localhost:8501,http://127.0.0.1:8501
       TESSERACT_CMD: /usr/bin/tesseract
       HF_HOME: /home/appuser/.cache/huggingface
       # Ollama runs on the Windows host. Set OLLAMA_ENABLED=true in backend/.env when needed.

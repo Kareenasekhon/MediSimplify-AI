@@ -2,10 +2,12 @@ import os
 import uuid
 import shutil
 from pathlib import Path
+
+from app.core.config import settings
 from fastapi import UploadFile
 
 # Point to backend/temporary_data
-TEMP_DIR = Path(__file__).resolve().parent.parent.parent / "temporary_data"
+TEMP_DIR = Path(settings.temporary_data_dir)
 
 def ensure_temp_dir() -> None:
     """
