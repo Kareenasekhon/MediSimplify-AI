@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     rate_limit_voice_per_minute: int = Field(default=10, ge=1, le=120)
     trusted_proxy_headers: bool = True
 
+    metrics_enabled: bool = True
+    metrics_exclude_health_checks: bool = True
+    slow_request_threshold_ms: float = Field(default=3000.0, gt=0, le=300000)
+
     max_report_size_mb: int = Field(default=5, ge=1, le=100)
     max_question_length: int = Field(default=4000, ge=100, le=20000)
     persistent_data_dir: Path = Field(

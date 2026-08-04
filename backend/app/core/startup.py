@@ -39,6 +39,12 @@ def validate_runtime_environment() -> None:
         settings.max_question_length,
         settings.cors_origins,
     )
+    logger.info(
+        "Observability | metrics={} | exclude_health={} | slow_threshold_ms={}",
+        "enabled" if settings.metrics_enabled else "disabled",
+        settings.metrics_exclude_health_checks,
+        settings.slow_request_threshold_ms,
+    )
 
     if not settings.configured_providers:
         logger.warning("No LLM provider is configured; AI operations will be unavailable.")

@@ -10,6 +10,7 @@ from app.api import (
     routes_chat,
     routes_extraction,
     routes_health,
+    routes_metrics,
     routes_providers,
     routes_report_analysis,
     routes_voice,
@@ -19,6 +20,7 @@ from app.core.config import settings
 from app.core.error_handlers import register_error_handlers
 from app.core.logging_config import setup_logging
 from app.core.startup import validate_runtime_environment
+from app.middleware.observability import ObservabilityMiddleware
 from app.middleware.rate_limit import InMemoryRateLimitMiddleware
 from app.middleware.request_context import RequestContextMiddleware
 from app.middleware.security import SecurityHeadersMiddleware
@@ -50,11 +52,13 @@ app = FastAPI(
 )
 
 
-app.add_middleware(RequestContextMiddleware)
+app.add_middleware(ObservabilityMiddleware)
 if settings.rate_limit_enabled:
     app.add_middleware(InMemoryRateLimitMiddleware)
 if settings.security_headers_enabled:
     app.add_middleware(SecurityHeadersMiddleware)
+# Request context is added last so it runs first and supplies request IDs to logs.
+app.add_middleware(RequestContextMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -65,6 +69,7 @@ app.add_middleware(
 )
 
 app.include_router(routes_health.router, prefix=constants.API_V1_STR)
+app.include_router(routes_metrics.router)
 app.include_router(routes_extraction.router, prefix=constants.API_V1_STR)
 app.include_router(routes_providers.router, prefix=constants.API_V1_STR)
 app.include_router(routes_analysis.router, prefix=constants.API_V1_STR)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, Response, status
@@ -30,22 +31,38 @@ async def get_liveness() -> dict:
     }
 
 
-@router.get("/health/ready", tags=["Health"])
-async def get_readiness(response: Response) -> dict:
-    """Confirm that required runtime storage and provider configuration are ready."""
-    checks: dict[str, bool] = {}
-
+def _storage_ready() -> bool:
     try:
         Path(settings.temporary_data_dir).mkdir(parents=True, exist_ok=True)
         probe = Path(settings.temporary_data_dir) / ".readiness"
         probe.write_text("ready", encoding="utf-8")
         probe.unlink(missing_ok=True)
-        checks["temporary_storage"] = True
+        return True
     except OSError:
-        checks["temporary_storage"] = False
+        return False
 
-    checks["llm_provider"] = bool(settings.configured_providers)
-    ready = all(checks.values())
+
+@router.get("/health/ready", tags=["Health"])
+async def get_readiness(response: Response) -> dict:
+    """Return a secret-free summary of runtime dependencies and capabilities."""
+    tesseract = settings.tesseract_cmd or shutil.which("tesseract")
+    vector_path = Path(settings.persistent_data_dir)
+    try:
+        vector_path.mkdir(parents=True, exist_ok=True)
+        vector_store_ready = vector_path.exists() and vector_path.is_dir()
+    except OSError:
+        vector_store_ready = False
+
+    checks: dict[str, bool] = {
+        "temporary_storage": _storage_ready(),
+        "llm_provider": bool(settings.configured_providers),
+        "vector_store": vector_store_ready,
+        "ocr": (not settings.local_ocr_enabled) or bool(tesseract),
+        "voice": (not settings.voice_transcription_enabled) or bool(settings.voice_whisper_model),
+    }
+
+    # Only storage and an LLM provider are mandatory for accepting core traffic.
+    ready = checks["temporary_storage"] and checks["llm_provider"]
     if not ready:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 

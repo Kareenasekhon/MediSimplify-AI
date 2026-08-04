@@ -16,6 +16,7 @@ from app.models.llm_models import (
     LLMMessage,
 )
 from app.providers.provider_factory import ProviderFactory
+from app.services.metrics_service import metrics_service
 
 logger = logging.getLogger("medisimplify")
 
@@ -94,6 +95,7 @@ async def generate(request: LLMGenerationRequest) -> LLMGenerationResult:
                     require_json=request.require_json,
                 )
                 parsed = parse_json_response(content) if request.require_json else None
+                metrics_service.provider_succeeded(provider.name.value)
                 return LLMGenerationResult(
                     provider=provider.name,
                     model=provider.model_name,
@@ -103,6 +105,7 @@ async def generate(request: LLMGenerationRequest) -> LLMGenerationResult:
                     attempts=attempts,
                 )
             except ProviderError as exc:
+                metrics_service.provider_failed(provider_name.value)
                 failures.append(f"{provider_name.value}: {exc.message}")
                 if retry_index < settings.llm_max_retries:
                     await asyncio.sleep(settings.llm_retry_delay_seconds)
