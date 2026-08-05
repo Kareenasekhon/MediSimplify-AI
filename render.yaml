@@ -7,7 +7,6 @@ services:
     rootDir: backend
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/v1/health/ready
-    maxShutdownDelaySeconds: 60
     autoDeployTrigger: checksPass
     disk:
       name: medisimplify-backend-data
@@ -49,7 +48,6 @@ services:
     rootDir: frontend
     dockerfilePath: ./Dockerfile
     healthCheckPath: /_stcore/health
-    maxShutdownDelaySeconds: 30
     autoDeployTrigger: checksPass
     disk:
       name: medisimplify-frontend-data
