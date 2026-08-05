@@ -1,67 +1,116 @@
 services:
+  # =========================================================
+  # FastAPI Backend
+  # =========================================================
   - type: web
     name: medisimplify-api
     runtime: docker
     region: singapore
-    plan: starter
+    plan: free
+
     rootDir: backend
     dockerfilePath: ./Dockerfile
+
     healthCheckPath: /api/v1/health/ready
     autoDeployTrigger: checksPass
-    disk:
-      name: medisimplify-backend-data
-      mountPath: /var/data
-      sizeGB: 10
+
     envVars:
+      # Application environment
       - key: APP_ENV
         value: production
+
       - key: DEBUG
         value: "false"
+
       - key: API_DOCS_ENABLED
         value: "false"
+
+      # Free Render services use temporary storage.
+      # Data stored here may be deleted after restarts or redeployments.
       - key: PERSISTENT_DATA_DIR
-        value: /var/data
+        value: /tmp/medisimplify
+
       - key: HF_HOME
-        value: /var/data/model_cache/huggingface
+        value: /tmp/medisimplify/model_cache/huggingface
+
+      # Tesseract path inside the backend Docker container
       - key: TESSERACT_CMD
         value: /usr/bin/tesseract
+
+      # Add the deployed frontend URL in the Render dashboard.
+      # Example:
+      # https://medisimplify-web.onrender.com
       - key: ALLOWED_ORIGINS
         sync: false
+
+      # Default and fallback LLM providers
       - key: DEFAULT_LLM_PROVIDER
         value: groq
+
       - key: LLM_FALLBACK_PROVIDERS
         value: gemini
+
+      # Add real API keys privately in Render.
       - key: GROQ_API_KEY
         sync: false
+
       - key: GEMINI_API_KEY
         sync: false
+
+      # Ollama cannot run as a local host service on Render.
       - key: OLLAMA_ENABLED
         value: "false"
+
+      # Disable local Whisper transcription on the free backend initially.
+      # It can require substantial RAM and model-download time.
       - key: VOICE_TRANSCRIPTION_ENABLED
         value: "false"
 
+      # Text-to-speech can remain enabled if supported by your configuration.
+      - key: VOICE_SPEECH_ENABLED
+        value: "true"
+
+      # Monitoring
+      - key: METRICS_ENABLED
+        value: "true"
+
+      - key: METRICS_EXCLUDE_HEALTH_CHECKS
+        value: "true"
+
+      - key: SLOW_REQUEST_THRESHOLD_MS
+        value: "3000"
+
+  # =========================================================
+  # Streamlit Frontend
+  # =========================================================
   - type: web
     name: medisimplify-web
     runtime: docker
     region: singapore
-    plan: starter
+    plan: free
+
     rootDir: frontend
     dockerfilePath: ./Dockerfile
+
     healthCheckPath: /_stcore/health
     autoDeployTrigger: checksPass
-    disk:
-      name: medisimplify-frontend-data
-      mountPath: /var/data
-      sizeGB: 1
+
     envVars:
+      # Connect Streamlit to the Render backend through
+      # Render's internal service address.
       - key: BACKEND_API_HOSTPORT
         fromService:
           type: web
           name: medisimplify-api
           property: hostport
+
+      # Report history is temporary on the free plan.
       - key: REPORT_HISTORY_PATH
-        value: /var/data/report_history.json
+        value: /tmp/medisimplify/report_history.json
+
+      # Allow enough time for a sleeping free backend to wake up.
       - key: BACKEND_REQUEST_TIMEOUT_SECONDS
         value: "180"
+
       - key: BACKEND_CONNECT_TIMEOUT_SECONDS
-        value: "20"
+        value: "30"
