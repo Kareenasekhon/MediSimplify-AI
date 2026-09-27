@@ -9,7 +9,7 @@ services:
     plan: free
 
     rootDir: backend
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./Dockerfile.render
 
     healthCheckPath: /api/v1/health/ready
     autoDeployTrigger: checksPass
