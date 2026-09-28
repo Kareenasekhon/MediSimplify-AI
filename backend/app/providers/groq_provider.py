@@ -26,7 +26,10 @@ class GroqProvider(BaseLLMProvider):
         try:
             from groq import AsyncGroq
         except ImportError as exc:
-            raise ProviderError("Groq SDK is unavailable. Install backend requirements.") from exc
+            raise ProviderError(
+                "Groq SDK is unavailable. Install backend requirements."
+            ) from exc
+
         return AsyncGroq
 
     @staticmethod
@@ -35,30 +38,77 @@ class GroqProvider(BaseLLMProvider):
         AsyncGroq = GroqProvider._load_sdk()
         return AsyncGroq(api_key=settings.groq_api_key)
 
-    async def generate(self, messages: list[LLMMessage], *, temperature: float, max_tokens: int, require_json: bool = False) -> str:
+    async def generate(
+        self,
+        messages: list[LLMMessage],
+        *,
+        temperature: float,
+        max_tokens: int,
+        require_json: bool = False,
+    ) -> str:
         if not self.is_configured():
-            raise ProviderError("Groq is not configured. Add GROQ_API_KEY to backend/.env.")
+            raise ProviderError(
+                "Groq is not configured. Add GROQ_API_KEY to backend/.env."
+            )
+
+        # Convert messages without modifying the original list.
+        request_messages = [
+            message.model_dump() for message in messages
+        ]
+
+        # Groq JSON Object Mode requires an explicit JSON instruction.
+        if require_json and request_messages:
+            request_messages[-1]["content"] += (
+                "\n\nIMPORTANT: Return only a valid JSON object. "
+                "Do not include markdown, explanations, reasoning, "
+                "or any text outside the JSON object."
+            )
+
         request: dict[str, Any] = {
             "model": self.model_name,
-            "messages": [message.model_dump() for message in messages],
+            "messages": request_messages,
             "temperature": temperature,
             "max_completion_tokens": max_tokens,
         }
+
         if require_json:
-            request["response_format"] = {"type": "json_object"}
+            request["response_format"] = {
+                "type": "json_object"
+            }
+
+            # GPT-OSS models use include_reasoning rather than
+            # reasoning_format.
+            if self.model_name.startswith("openai/gpt-oss-"):
+                request["include_reasoning"] = False
+
         try:
             response = await asyncio.wait_for(
                 self._client().chat.completions.create(**request),
                 timeout=settings.llm_timeout_seconds,
             )
+
             content = response.choices[0].message.content
+
             if not content:
-                raise ProviderError("Groq returned an empty response.")
+                raise ProviderError(
+                    "Groq returned an empty response."
+                )
+
             return content.strip()
+
         except ProviderError:
             raise
+
         except asyncio.TimeoutError as exc:
-            raise ProviderError("Groq request timed out.") from exc
+            raise ProviderError(
+                "Groq request timed out."
+            ) from exc
+
         except Exception as exc:
-            logger.error("Groq generation failed", exc_info=True)
-            raise ProviderError(f"Groq generation failed: {exc}") from exc
+            logger.error(
+                "Groq generation failed",
+                exc_info=True,
+            )
+            raise ProviderError(
+                f"Groq generation failed: {exc}"
+            ) from exc
